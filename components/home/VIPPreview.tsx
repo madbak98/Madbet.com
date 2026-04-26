@@ -1,0 +1,2 @@
+const levels=["Bronze","Crimson","Obsidian","Royal Cream","Madbak Elite"];
+export function VIPPreview(){return <section><h2 className="display-title mb-4 text-3xl">VIP Club</h2><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">{levels.map((l)=><div key={l} className="panel rounded-xl p-3"><div className="font-semibold">{l}</div><div className="text-xs text-[#bfaf91]">Demo rakeback · Badge · Multiplier</div></div>)}</div></section>;}

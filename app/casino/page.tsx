@@ -1,0 +1,7 @@
+"use client";
+import { useMemo, useState } from "react";
+import { games } from "@/lib/games";
+import { GameFilters } from "@/components/casino/GameFilters";
+import { GameGrid } from "@/components/casino/GameGrid";
+import { CasinoTicker } from "@/components/casino/CasinoTicker";
+export default function CasinoPage(){const [query,setQuery]=useState("");const [filter,setFilter]=useState("All");const items=useMemo(()=>games.filter((g)=>(filter==="All"||g.category===filter)&&g.name.toLowerCase().includes(query.toLowerCase())),[query,filter]);return <div className="space-y-5"><div className="panel rounded-2xl p-6"><h1 className="display-title text-4xl">Casino Lobby</h1><p className="text-[#bfaf91]">The floor is open.</p></div><input className="panel w-full rounded-xl px-3 py-2" placeholder="Search games" value={query} onChange={(e)=>setQuery(e.target.value)}/><GameFilters value={filter} onChange={setFilter}/><CasinoTicker/><section><h2 className="mb-3 text-xl">Trending</h2><GameGrid items={items.slice(0,6)}/></section><section><h2 className="mb-3 text-xl">New Games</h2><GameGrid items={[...items].reverse().slice(0,6)}/></section><section><h2 className="mb-3 text-xl">High Volatility</h2><GameGrid items={items.filter((i)=>i.volatility==="High")}/></section><section><h2 className="mb-3 text-xl">Table Games</h2><GameGrid items={items.filter((i)=>i.category==="Table Games")}/></section></div>;}

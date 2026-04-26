@@ -1,0 +1,1 @@
+export function CasinoTicker(){return <div className="panel overflow-hidden rounded-xl p-3 text-sm text-[#bfaf91]">The floor is open · 41 users hit demo multipliers this hour · High-volatility room heating up</div>;}

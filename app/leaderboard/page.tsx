@@ -1,0 +1,5 @@
+"use client";
+import { useState } from "react";
+import { Tabs } from "@/components/ui/Tabs";
+import { mockUsers } from "@/lib/mockUsers";
+export default function LeaderboardPage(){const [tab,setTab]=useState("Daily");const users=[...mockUsers].sort((a,b)=>b.profit-a.profit);return <div className="space-y-4"><h1 className="display-title text-4xl">Leaderboard</h1><Tabs options={["Daily","Weekly","Monthly"]} value={tab} onChange={setTab}/><div className="grid gap-3 sm:grid-cols-3">{users.slice(0,3).map((u,i)=><div key={u.username} className="panel rounded-xl p-4 text-center"><div className="text-2xl">#{i+1}</div><div>{u.username}</div><div className="text-sm text-[#bfaf91]">{u.profit} DC</div></div>)}</div><div className="panel overflow-auto rounded-xl"><table className="w-full text-left text-sm"><thead><tr className="border-b border-[#2d201c]"><th className="p-3">User</th><th>Level</th><th>Profit</th><th>Favorite</th></tr></thead><tbody>{users.map((u)=><tr key={u.username} className="border-b border-[#1f1613]"><td className="p-3">{u.username}</td><td>{u.level}</td><td>{u.profit}</td><td>{u.favorite}</td></tr>)}</tbody></table></div></div>;}

@@ -1,0 +1,3 @@
+import Link from "next/link";
+import { GameItem } from "@/lib/games";
+export function GameCard({game}:{game:GameItem}){return <div className="panel rounded-2xl p-4 transition hover:-translate-y-1 hover:shadow-[0_0_22px_rgba(177,18,38,.26)]"><div className="flex items-center justify-between"><h3 className="text-lg font-semibold">{game.name}</h3><span className="text-xs text-[#bfaf91]">{game.category}</span></div><p className="mt-2 text-sm text-[#bfaf91]">{game.players} live · RTP {game.rtp}% · {game.volatility}</p><Link href={game.slug==="sports"?"/sports":`/game/${game.slug}`} className="mt-3 inline-block rounded-lg border border-[#b11226] px-3 py-2 text-sm">Play Demo</Link></div>;}

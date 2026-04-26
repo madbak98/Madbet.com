@@ -1,0 +1,6 @@
+"use client";
+import Link from "next/link";
+import { useCasinoStore } from "@/store/useCasinoStore";
+import { formatCoins } from "@/lib/format";
+import { Badge } from "@/components/ui/Badge";
+export function TopNav(){const {balance,soundEnabled,toggleSound,glowEnabled,toggleGlow}=useCasinoStore();return <header className="sticky top-0 z-40 border-b border-[#2b1e1a] bg-[#070707]/90 backdrop-blur"><div className="flex items-center gap-3 px-4 py-3"><Badge>DEMO MODE</Badge><input className="panel hidden max-w-sm flex-1 rounded-xl px-3 py-2 text-sm md:block" placeholder="Search games, users, markets..."/><div className="ml-auto flex items-center gap-2"><span className="rounded-lg border border-[#5a352e] px-3 py-1 text-sm">{formatCoins(balance)}</span><Link href="/wallet" className="rounded-lg border border-[#b11226] px-3 py-1 text-sm">Wallet</Link><button onClick={toggleSound} className="rounded-lg border border-[#412824] px-2 py-1 text-xs">{soundEnabled?"Sound On":"Sound Off"}</button><button onClick={toggleGlow} className="rounded-lg border border-[#412824] px-2 py-1 text-xs">{glowEnabled?"Glow On":"Glow Off"}</button><span className="rounded-lg border border-[#412824] px-2 py-1 text-xs">EN</span></div></div></header>;}

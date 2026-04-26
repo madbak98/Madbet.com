@@ -1,0 +1,14 @@
+@import "tailwindcss";
+:root{--bg-main:#050505;--bg-soft:#0d0d0d;--panel:#15110f;--panel-border:#2a1d19;--red:#b11226;--red-hot:#e21b35;--cream:#f2e3c6;--cream-muted:#bfaf91;--gold-soft:#c9a45c;--danger-dark:#3a0b10}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg-main);color:var(--cream)}body{font-family:var(--font-space),sans-serif}
+.font-display{font-family:var(--font-unbounded),system-ui,sans-serif}
+.custom-scrollbar::-webkit-scrollbar{width:4px}
+.custom-scrollbar::-webkit-scrollbar-track{background:#050505}
+.custom-scrollbar::-webkit-scrollbar-thumb{background:#2A1D19;border-radius:10px}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover{background:#B11226}
+@theme inline{--font-sans:var(--font-space);--color-bg-main:var(--bg-main)}
+.display-title{font-family:var(--font-playfair),serif;letter-spacing:.03em}.panel{background:linear-gradient(165deg,rgba(26,18,15,.95),rgba(11,11,11,.97));border:1px solid var(--panel-border)}.red-glow{box-shadow:0 0 0 1px rgba(177,18,38,.3),0 0 24px rgba(177,18,38,.25)}
+.scanline::before{content:"";position:absolute;inset:0;background:linear-gradient(transparent,rgba(226,27,53,.08),transparent);animation:scan 3.5s linear infinite;pointer-events:none}@keyframes scan{from{transform:translateY(-100%)}to{transform:translateY(100%)}}
+::-webkit-scrollbar{width:10px}::-webkit-scrollbar-thumb{background:#412722;border-radius:999px}
+@keyframes madbak-sports-ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.madbak-sports-ticker{animation:madbak-sports-ticker 32s linear infinite}

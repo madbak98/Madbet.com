@@ -1,0 +1,1 @@
+export const mockUsers=Array.from({length:12}).map((_,i)=>({username:`house_${100+i}`,level:["Bronze","Crimson","Obsidian","Royal Cream","Madbak Elite"][i%5],profit:Math.round((Math.random()-0.3)*18000),favorite:["Crash","Dice","Roulette","Mines","Blackjack"][i%5]}));

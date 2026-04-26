@@ -1,0 +1,4 @@
+"use client";
+import { useState } from "react";
+import { Button } from "@/components/ui/Button";
+export function BetPanel({onPlay,disabled}:{onPlay:(bet:number)=>void;disabled?:boolean}){const [bet,setBet]=useState(100);return <div className="panel space-y-3 rounded-2xl p-4"><label className="text-sm text-[#bfaf91]">Bet Amount</label><input type="number" value={bet} onChange={(e)=>setBet(Math.max(1,Number(e.target.value)))} className="w-full rounded-lg border border-[#472b25] bg-[#0e0b0a] px-3 py-2"/><div className="grid grid-cols-3 gap-2"><Button onClick={()=>setBet(Math.max(1,Math.floor(bet/2)))}>Half</Button><Button onClick={()=>setBet(bet*2)}>Double</Button><Button onClick={()=>setBet(10000)}>Max</Button></div><Button disabled={disabled} onClick={()=>onPlay(bet)} className="w-full bg-[#2a1116]">Play Demo</Button></div>;}

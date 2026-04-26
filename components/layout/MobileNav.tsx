@@ -1,0 +1,2 @@
+import Link from "next/link";
+export function MobileNav(){return <nav className="fixed bottom-0 left-0 right-0 z-40 grid grid-cols-6 border-t border-[#2a1d19] bg-[#090909] lg:hidden">{[["Home","/"],["Casino","/casino"],["Sports","/sports"],["Support","/support"],["Wallet","/wallet"],["Profile","/profile"]].map(([l,h])=><Link key={l} href={h} className="py-3 text-center text-xs text-[#bfaf91]">{l}</Link>)}</nav>;}
