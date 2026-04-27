@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Space_Grotesk, Unbounded } from "next/font/google";
 import "./globals.css";
 
@@ -17,6 +17,12 @@ export const metadata: Metadata = {
   title: "MADBAK HOUSE — Demo Casino Experience",
   description: "A cinematic fake-coin casino interface built as an immersive portfolio project.",
   robots: { index: false, follow: false },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

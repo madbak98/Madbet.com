@@ -125,7 +125,7 @@ export function AuthModal({
     <AnimatePresence>
       {open ? (
       <motion.div
-        className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm"
+        className="fixed inset-0 z-[200] flex items-end justify-center bg-black/75 backdrop-blur-sm sm:items-center sm:p-4"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -141,7 +141,7 @@ export function AuthModal({
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 16, scale: 0.98 }}
           transition={{ type: "spring", damping: 26, stiffness: 320 }}
-          className="relative w-full max-w-md rounded-2xl border border-[#2A1D19] bg-[#15110F] shadow-2xl shadow-black/60"
+          className="relative flex max-h-[100dvh] w-full max-w-full flex-col overflow-hidden rounded-t-2xl border border-[#2A1D19] bg-[#15110F] shadow-2xl shadow-black/60 sm:max-h-[min(92dvh,880px)] sm:max-w-md sm:rounded-2xl"
           onClick={(e) => e.stopPropagation()}
         >
           <button
@@ -149,13 +149,13 @@ export function AuthModal({
             onClick={() => {
               onClose();
             }}
-            className="absolute right-3 top-3 z-[5] rounded-lg p-2 text-[#BFAF91] hover:bg-white/5 hover:text-[#F2E3C6]"
+            className="absolute right-3 top-[max(0.5rem,env(safe-area-inset-top))] z-[5] rounded-lg p-2 text-[#BFAF91] hover:bg-white/5 hover:text-[#F2E3C6]"
             aria-label="Close"
           >
             <X size={18} />
           </button>
 
-          <div className="p-6 pt-10">
+          <div className="max-h-[100dvh] overflow-y-auto overscroll-contain px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-12 sm:px-6 sm:pt-14">
             <>
                 <h2 id="auth-modal-title" className="font-display text-2xl font-black uppercase italic text-[#F2E3C6] mb-6">
                   {tab === "login" && "Welcome back"}
@@ -271,7 +271,7 @@ export function AuthModal({
                 )}
 
                 {tab === "signup" && (
-                  <form onSubmit={handleSignup} className="max-h-[60vh] space-y-3 overflow-y-auto pr-1 custom-scrollbar">
+                  <form onSubmit={handleSignup} className="space-y-3 pb-4">
                     <Field label="Username" value={suUser} onChange={setSuUser} autoComplete="username" />
                     <Field label="Email" type="email" value={suEmail} onChange={setSuEmail} autoComplete="email" />
                     <div>

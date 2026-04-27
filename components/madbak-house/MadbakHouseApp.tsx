@@ -15,7 +15,6 @@ import {
   Dices,
   Zap,
   ShieldCheck,
-  User,
   Wallet,
   AlertTriangle,
   Coins,
@@ -38,6 +37,7 @@ import {
   CircleDot,
   ListOrdered,
   LifeBuoy,
+  Menu,
 } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area } from "recharts";
 import { useAuthStore, useCurrentUser } from "@/store/useAuthStore";
@@ -53,6 +53,7 @@ import { MadbakAdminDashboard } from "@/components/madbak-house/admin/MadbakAdmi
 import { SportsbookPage } from "@/components/sports/SportsbookPage";
 import { GlobalSearch } from "@/components/madbak-house/GlobalSearch";
 import { SupportForm } from "@/components/support/SupportForm";
+import { NeonMoneyHeadline } from "@/components/madbak-house/NeonMoneyHeadline";
 
 const COLORS = {
   bgMain: "#050505",
@@ -197,7 +198,19 @@ function SidebarNavRow({
   );
 }
 
-function Sidebar({
+function SidebarBrand({ compact = false }: { compact?: boolean }) {
+  return (
+    <div className={compact ? "px-4 pb-3 pt-2" : "p-6 pb-4 lg:p-8 lg:pb-4"}>
+      <h1 className="flex items-center gap-2 font-display text-xl font-black tracking-tighter text-[#F2E3C6] sm:text-2xl">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm bg-[#B11226] font-black">M</div>
+        MADBET
+      </h1>
+      <p className="mt-1 text-[10px] font-bold tracking-widest text-[#B11226]">HOUSE OF DEMO</p>
+    </div>
+  );
+}
+
+function SidebarNavContent({
   currentView,
   setView,
   showAdmin,
@@ -238,15 +251,7 @@ function Sidebar({
   ];
 
   return (
-    <aside className="custom-scrollbar fixed left-0 top-0 z-50 hidden h-full w-64 flex-col border-r border-[#2A1D19] bg-[#050505] md:flex">
-      <div className="p-8 pb-4">
-        <h1 className="flex items-center gap-2 font-display text-2xl font-black tracking-tighter text-[#F2E3C6]">
-          <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-[#B11226] font-black">M</div>
-          MADBAK
-        </h1>
-        <p className="mt-1 text-[10px] font-bold tracking-widest text-[#B11226]">HOUSE OF DEMO</p>
-      </div>
-
+    <>
       <nav className="custom-scrollbar flex-1 space-y-6 overflow-y-auto px-4 py-4">
         <div>
           <p className="mb-3 px-4 text-[10px] uppercase tracking-widest text-[#BFAF91]">Platform</p>
@@ -350,7 +355,132 @@ function Sidebar({
           </button>
         </div>
       </div>
+    </>
+  );
+}
+
+function Sidebar({
+  currentView,
+  setView,
+  showAdmin,
+}: {
+  currentView: string;
+  setView: (v: string) => void;
+  showAdmin: boolean;
+}) {
+  return (
+    <aside className="custom-scrollbar fixed left-0 top-0 z-50 hidden h-full w-52 shrink-0 flex-col border-r border-[#2A1D19] bg-[#050505] lg:flex xl:w-56 2xl:w-64">
+      <SidebarBrand />
+      <SidebarNavContent currentView={currentView} setView={setView} showAdmin={showAdmin} />
     </aside>
+  );
+}
+
+function MobileMenuDrawer({
+  open,
+  onClose,
+  currentView,
+  setView,
+  showAdmin,
+}: {
+  open: boolean;
+  onClose: () => void;
+  currentView: string;
+  setView: (v: string) => void;
+  showAdmin: boolean;
+}) {
+  const navigate = (v: string) => {
+    setView(v);
+    onClose();
+  };
+
+  return (
+    <AnimatePresence>
+      {open ? (
+        <>
+          <motion.button
+            type="button"
+            aria-label="Close menu"
+            className="fixed inset-0 z-[55] bg-black/75 backdrop-blur-sm lg:hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+          />
+          <motion.aside
+            initial={{ x: "-105%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "-105%" }}
+            transition={{ type: "spring", damping: 30, stiffness: 340 }}
+            className="custom-scrollbar fixed left-0 top-0 z-[60] flex h-[100dvh] max-h-[100dvh] w-[min(88vw,320px)] flex-col overflow-y-auto border-r border-[#2A1D19] bg-[#050505] shadow-2xl lg:hidden"
+          >
+            <div className="flex items-center justify-between border-b border-[#2A1D19] px-4 py-3">
+              <span className="font-display text-sm font-black uppercase tracking-wider text-[#F2E3C6]">Navigation</span>
+              <button type="button" onClick={onClose} className="rounded-lg p-2 text-[#BFAF91] hover:bg-white/5 hover:text-[#F2E3C6]" aria-label="Close menu">
+                <X size={22} />
+              </button>
+            </div>
+            <SidebarBrand compact />
+            <SidebarNavContent currentView={currentView} setView={navigate} showAdmin={showAdmin} />
+          </motion.aside>
+        </>
+      ) : null}
+    </AnimatePresence>
+  );
+}
+
+function MobileBottomNav({
+  currentView,
+  setView,
+  onOpenMenu,
+}: {
+  currentView: string;
+  setView: (v: string) => void;
+  onOpenMenu: () => void;
+}) {
+  const casinoActive =
+    currentView === "casino" ||
+    currentView.startsWith("game-") ||
+    ["jackpot-slots", "classic-slots", "live-casino", "game-shows"].includes(currentView);
+
+  const item = (
+    id: string,
+    label: string,
+    Icon: React.ComponentType<{ size?: number; className?: string }>,
+    active: boolean,
+  ) => (
+    <button
+      key={id}
+      type="button"
+      onClick={() => setView(id)}
+      className={`flex min-h-[52px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 py-1 text-[8px] font-black uppercase tracking-wide sm:text-[9px] ${
+        active ? "text-[#F2E3C6]" : "text-[#BFAF91]"
+      }`}
+    >
+      <Icon size={20} className={active ? "text-[#B11226]" : "text-[#BFAF91]"} />
+      <span className="max-w-[64px] truncate">{label}</span>
+    </button>
+  );
+
+  return (
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-50 flex border-t border-[#2A1D19] bg-[#050505]/95 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1 backdrop-blur-xl lg:hidden"
+      aria-label="Primary navigation"
+    >
+      {item("home", "Home", LayoutGrid, currentView === "home")}
+      {item("casino", "Casino", Gamepad2, casinoActive)}
+      {item("sports", "Sports", Trophy, currentView === "sports")}
+      {item("wallet", "Wallet", Wallet, currentView === "wallet")}
+      <button
+        type="button"
+        onClick={onOpenMenu}
+        className="flex min-h-[52px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 py-1 text-[8px] font-black uppercase tracking-wide text-[#BFAF91] sm:text-[9px]"
+        aria-label="Open full menu"
+      >
+        <Menu size={20} />
+        <span className="max-w-[64px] truncate">Menu</span>
+      </button>
+    </nav>
   );
 }
 
@@ -361,6 +491,7 @@ function TopNav({
   onOpenAuth,
   onLogout,
   onSportsMatchFocus,
+  onOpenMobileMenu,
 }: {
   balance: number;
   setView: (v: string) => void;
@@ -368,12 +499,24 @@ function TopNav({
   onOpenAuth: (tab: "login" | "signup") => void;
   onLogout: () => void;
   onSportsMatchFocus: (matchId: string) => void;
+  onOpenMobileMenu?: () => void;
 }) {
   const level = user ? getVerificationLevel(user, true) : 0;
 
   return (
-    <nav className="fixed left-0 right-0 top-0 z-40 flex min-h-20 flex-col gap-2 border-b border-[#2A1D19] bg-[#050505]/90 px-3 py-2 backdrop-blur-xl md:left-64 md:h-20 md:flex-row md:items-center md:justify-between md:px-8 md:py-0">
-      <div className="flex w-full flex-1 flex-col md:max-w-xl md:pr-4">
+    <nav className="fixed left-0 right-0 top-0 z-40 flex min-h-[4.25rem] items-center gap-2 border-b border-[#2A1D19] bg-[#050505]/90 px-2 py-2 backdrop-blur-xl sm:px-3 lg:left-52 lg:min-h-20 lg:px-8 xl:left-56 2xl:left-64">
+      {onOpenMobileMenu ? (
+        <button
+          type="button"
+          className="shrink-0 rounded-lg border border-[#2A1D19] p-2.5 text-[#BFAF91] transition-colors hover:border-[#B11226] hover:text-[#F2E3C6] lg:hidden"
+          aria-label="Open navigation menu"
+          onClick={onOpenMobileMenu}
+        >
+          <Menu size={22} />
+        </button>
+      ) : null}
+
+      <div className="min-w-0 flex-1 lg:max-w-xl lg:pr-4">
         <GlobalSearch
           setView={setView}
           onSportsMatchFocus={onSportsMatchFocus}
@@ -382,26 +525,27 @@ function TopNav({
         />
       </div>
 
-      <div className="flex w-full items-center justify-end gap-2 md:w-auto md:gap-4">
+      <div className="flex shrink-0 items-center justify-end gap-1.5 sm:gap-2 lg:gap-4">
         <div className="hidden lg:flex flex-col items-end mr-1">
           <Badge variant="demo">DEMO MODE ACTIVE</Badge>
-          <span className="text-[10px] text-[#BFAF91] mt-1 uppercase font-bold">Fake coins only</span>
+          <span className="mt-1 text-[10px] font-bold uppercase text-[#BFAF91]">Fake coins only</span>
         </div>
 
-        {user && level > 0 && (
+        {user && level > 0 ? (
           <span className="hidden rounded border border-[#2A1D19] px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-[#C9A45C] sm:inline">
             L{level}
           </span>
-        )}
+        ) : null}
 
         <button
           type="button"
           onClick={() => setView("wallet")}
-          className="cursor-pointer flex items-center gap-2 px-2 py-2 md:gap-3 md:px-3 bg-[#15110F] border border-[#2A1D19] rounded-lg hover:border-[#B11226] transition-all"
+          className="flex min-h-[48px] cursor-pointer items-center gap-1.5 rounded-lg border border-[#2A1D19] bg-[#15110F] px-2 py-2 transition-all hover:border-[#B11226] sm:gap-2 sm:px-3"
+          aria-label="Wallet"
         >
-          <div className="flex flex-col items-end">
-            <span className="text-[10px] text-[#BFAF91] uppercase font-bold leading-none">Balance</span>
-            <span className="text-xs font-black text-[#F2E3C6] font-mono tracking-tighter md:text-sm">
+          <div className="hidden flex-col items-end sm:flex">
+            <span className="text-[10px] font-bold uppercase leading-none text-[#BFAF91]">Balance</span>
+            <span className="font-mono text-xs font-black tracking-tighter text-[#F2E3C6] md:text-sm">
               {user ? (
                 <>
                   {formatCurrency(balance)} <span className="text-[#C9A45C]">DBAK</span>
@@ -411,12 +555,12 @@ function TopNav({
               )}
             </span>
           </div>
-          <div className="w-8 h-8 bg-[#C9A45C]/10 rounded-full flex items-center justify-center text-[#C9A45C]">
-            <Wallet size={16} />
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#C9A45C]/10 text-[#C9A45C]">
+            <Wallet size={18} />
           </div>
         </button>
 
-        <div className="flex items-center gap-1 md:gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
           {user ? (
             <UserMenu user={user} balance={balance} onNavigate={setView} onLogout={onLogout} />
           ) : (
@@ -424,17 +568,19 @@ function TopNav({
               <button
                 type="button"
                 onClick={() => onOpenAuth("login")}
-                className="flex items-center gap-1 rounded-lg border border-[#2A1D19] px-3 py-2 text-[10px] font-black uppercase tracking-widest text-[#BFAF91] hover:border-[#B11226] hover:text-[#F2E3C6]"
+                className="flex min-h-[48px] min-w-[48px] items-center justify-center gap-1 rounded-lg border border-[#2A1D19] px-2 text-[10px] font-black uppercase tracking-widest text-[#BFAF91] hover:border-[#B11226] hover:text-[#F2E3C6] sm:min-w-0 sm:px-3"
+                aria-label="Log in"
               >
-                <LogIn size={14} />
-                Login
+                <LogIn size={18} />
+                <span className="hidden sm:inline">Login</span>
               </button>
               <button
                 type="button"
                 onClick={() => onOpenAuth("signup")}
-                className="rounded-lg bg-[#B11226] px-3 py-2 text-[10px] font-black uppercase tracking-widest text-[#F2E3C6] hover:bg-[#E21B35]"
+                className="flex min-h-[48px] items-center rounded-lg bg-[#B11226] px-2.5 text-[10px] font-black uppercase tracking-widest text-[#F2E3C6] hover:bg-[#E21B35] sm:px-3"
               >
-                Sign up
+                <span className="sm:hidden">Join</span>
+                <span className="hidden sm:inline">Sign up</span>
               </button>
             </>
           )}
@@ -493,13 +639,13 @@ function BetPanel({
             className="w-full bg-[#050505] border border-[#2A1D19] p-4 rounded-xl text-[#F2E3C6] font-mono text-lg focus:outline-none focus:border-[#B11226] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           />
           <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
-            <button type="button" disabled={locked} onClick={() => handleAdjust(0.5)} className="p-2 px-3 text-xs bg-[#15110F] border border-[#2A1D19] text-[#BFAF91] hover:text-white rounded-lg disabled:opacity-40">
+            <button type="button" disabled={locked} onClick={() => handleAdjust(0.5)} className="flex min-h-[44px] min-w-[52px] items-center justify-center rounded-lg border border-[#2A1D19] bg-[#15110F] px-3 text-xs text-[#BFAF91] hover:text-white disabled:opacity-40">
               1/2
             </button>
-            <button type="button" disabled={locked} onClick={() => handleAdjust(2)} className="p-2 px-3 text-xs bg-[#15110F] border border-[#2A1D19] text-[#BFAF91] hover:text-white rounded-lg disabled:opacity-40">
+            <button type="button" disabled={locked} onClick={() => handleAdjust(2)} className="flex min-h-[44px] min-w-[52px] items-center justify-center rounded-lg border border-[#2A1D19] bg-[#15110F] px-3 text-xs text-[#BFAF91] hover:text-white disabled:opacity-40">
               2x
             </button>
-            <button type="button" disabled={locked} onClick={() => setAmount(Math.min(balance, max))} className="p-2 px-3 text-xs bg-[#15110F] border border-[#2A1D19] text-[#BFAF91] hover:text-white rounded-lg disabled:opacity-40">
+            <button type="button" disabled={locked} onClick={() => setAmount(Math.min(balance, max))} className="flex min-h-[44px] min-w-[52px] items-center justify-center rounded-lg border border-[#2A1D19] bg-[#15110F] px-3 text-xs text-[#BFAF91] hover:text-white disabled:opacity-40">
               MAX
             </button>
           </div>
@@ -2769,8 +2915,8 @@ function RouletteGame({
   }, [winningNumber, resultIndex]);
 
   return (
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[320px_minmax(0,1fr)_320px] lg:gap-6">
-      <div className="order-1 rounded-2xl border border-[#2A1D19] bg-[#15110F] p-4 lg:order-1">
+    <div className="flex min-w-0 flex-col gap-5 lg:grid lg:grid-cols-[280px_minmax(0,1fr)_280px] lg:gap-6 xl:grid-cols-[320px_minmax(0,1fr)_320px]">
+      <div className="order-2 min-w-0 rounded-2xl border border-[#2A1D19] bg-[#15110F] p-4 lg:col-start-1 lg:row-span-2 lg:row-start-1 lg:order-none">
         <div className="rounded-xl border border-[#2A1D19] bg-[#0D0D0D] p-3">
           <p className="text-[10px] font-black uppercase tracking-widest text-[#BFAF91]">Balance</p>
           <p className="font-mono text-xl font-black text-[#F2E3C6]">{formatCurrency(balance)} <span className="text-[#C9A45C]">DBAK</span></p>
@@ -2843,10 +2989,10 @@ function RouletteGame({
         </div>
       </div>
 
-      <section className="order-2 min-w-0 space-y-4 lg:order-2">
+      <div className="order-1 min-w-0 space-y-4 lg:col-start-2 lg:row-start-1">
         <div className="rounded-2xl border border-[#2A1D19] bg-[#15110F] p-4 overflow-hidden">
-          <div className="flex min-h-[420px] items-center justify-center overflow-hidden rounded-2xl border border-[#F2E3C6]/10 bg-[#0D0D0D]">
-            <div ref={wheelRef} className="roulette-wheel relative mx-auto aspect-square w-full max-w-[420px] overflow-hidden rounded-full">
+          <div className="flex min-h-[min(360px,62vw)] items-center justify-center overflow-hidden rounded-2xl border border-[#F2E3C6]/10 bg-[#0D0D0D] lg:min-h-[420px]">
+            <div ref={wheelRef} className="roulette-wheel relative mx-auto aspect-square w-full max-w-[min(100%,420px)] overflow-hidden rounded-full">
               {/* Layer A: outer red ring */}
               <div className="absolute inset-[7%] rounded-full border-[10px] border-[#B11226] bg-gradient-to-br from-[#0d0a09] via-[#191210] to-[#050505]" />
               <div className="absolute inset-[16%] rounded-full border border-[#C9A45C]/20 bg-[#090808]" />
@@ -2906,10 +3052,12 @@ function RouletteGame({
           </div>
           <p className="mt-3 text-center text-xs text-[#BFAF91]">{isSpinning ? "Spinning..." : "Place bets and spin"}</p>
         </div>
+      </div>
 
+      <div className="order-3 min-w-0 space-y-4 lg:col-start-2 lg:row-start-2">
         <div className="rounded-2xl border border-[#2A1D19] bg-[#15110F] p-3">
-          <div className="overflow-x-auto lg:overflow-x-hidden">
-            <div className="mx-auto w-full max-w-[760px] min-w-[680px]">
+          <div className="-mx-1 overflow-x-auto overscroll-x-contain px-1 lg:overflow-x-hidden">
+            <div className="mx-auto w-full max-w-[760px] min-w-[640px]">
               <div className="mb-1 grid grid-cols-3 gap-1">
                 <button
                   type="button"
@@ -2997,9 +3145,9 @@ function RouletteGame({
             </div>
           </div>
         </div>
-      </section>
+      </div>
 
-      <aside className="order-4 rounded-2xl border border-[#2A1D19] bg-[#15110F] p-4 lg:order-3">
+      <aside className="order-4 min-w-0 rounded-2xl border border-[#2A1D19] bg-[#15110F] p-4 lg:col-start-3 lg:row-span-2 lg:row-start-1">
         <div className="flex items-center justify-between">
           <h3 className="text-[10px] font-black uppercase tracking-widest text-[#BFAF91]">Recent results</h3>
           <Badge variant="demo">EUROPEAN 0-36</Badge>
@@ -4171,8 +4319,8 @@ function PlinkoGame({
   };
 
   return (
-    <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
-      <div className="w-full shrink-0 space-y-4 lg:max-w-[300px]">
+    <div className="flex min-w-0 flex-col gap-8 lg:flex-row lg:items-start">
+      <div className="w-full min-w-0 shrink-0 space-y-4 lg:max-w-[300px]">
         <div className="rounded-2xl border border-[#2A1D19] bg-[#15110F] p-5">
           <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-[#BFAF91]">Risk</p>
           <div className="mb-4 grid grid-cols-3 gap-2">
@@ -4429,29 +4577,40 @@ function Homepage({ onPlay }: { onPlay: (view: string) => void }) {
 
   return (
     <div className="space-y-24 pb-24">
-      <section className="relative min-h-[80vh] flex flex-col items-center justify-center text-center px-4 overflow-hidden">
-        <motion.div style={{ y }} className="absolute inset-0 z-0 flex items-center justify-center opacity-10 select-none pointer-events-none">
-          <h1 className="text-[25vw] font-black text-[#F2E3C6] leading-none font-display">MADBAK</h1>
+      <section className="relative flex min-h-[80vh] flex-col overflow-hidden px-4 pb-10 pt-8 text-center md:pb-14 md:pt-10">
+        <motion.div style={{ y }} className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center px-4 select-none">
+          <NeonMoneyHeadline className="max-w-full text-center" />
         </motion.div>
 
-        <div className="relative z-10 max-w-4xl">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
-            <Badge variant="red">NOW ENTERING THE HOUSE</Badge>
-            <h2 className="text-6xl md:text-8xl font-black text-[#F2E3C6] tracking-tighter mt-6 mb-8 uppercase italic font-display">
-              WELCOME TO HOUSE OF BET
-            </h2>
-            <p className="text-[#BFAF91] text-lg max-w-2xl mx-auto mb-12 uppercase tracking-wide font-medium">
-              A next-generation betting and casino platform built for speed, strategy, and high-stakes entertainment. Enter a world of live odds, instant games, and premium play.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Button size="lg" onClick={() => onPlay("casino")} className="w-full sm:w-auto">
-                Enter Casino Floor
-              </Button>
-              <Button size="lg" variant="secondary" onClick={() => onPlay("sports")} className="w-full sm:w-auto">
-                Sportsbook
-              </Button>
+        <div className="relative z-10 mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="flex min-h-0 flex-1 flex-col"
+          >
+            <div className="flex shrink-0 flex-col items-center justify-start text-center">
+              <Badge variant="red">NOW ENTERING THE HOUSE</Badge>
+              <h2 className="mt-4 mb-6 font-display text-[clamp(1.75rem,5vw,3.75rem)] font-black uppercase italic tracking-tighter text-[#F2E3C6] md:mt-5 lg:text-[clamp(2rem,5vw,3.75rem)]">
+                <span className="block">WELCOME TO</span>
+                <span className="mt-1 block md:mt-2">{`"HOUSE OF BET"`}</span>
+              </h2>
+            </div>
+            <div className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-end px-2 pb-2 text-center">
+              <p className="mx-auto max-w-2xl text-lg font-medium uppercase tracking-wide text-[#BFAF91]">
+                A next-generation betting and casino platform built for speed, strategy, and high-stakes entertainment.
+                Enter a world of live odds, instant games, and premium play.
+              </p>
             </div>
           </motion.div>
+          <div className="mt-auto flex w-full flex-col items-center justify-center gap-4 pt-4 sm:flex-row sm:pb-2 sm:pt-5">
+            <Button size="lg" onClick={() => onPlay("casino")} className="w-full sm:w-auto">
+              Enter Casino Floor
+            </Button>
+            <Button size="lg" variant="secondary" onClick={() => onPlay("sports")} className="w-full sm:w-auto">
+              Sportsbook
+            </Button>
+          </div>
         </div>
       </section>
 
@@ -4569,6 +4728,7 @@ export function MadbakHouseApp() {
   const initializeAuth = useAuthStore((s) => s.initializeAuth);
 
   const [view, setView] = useState("home");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sportsMatchFocusId, setSportsMatchFocusId] = useState<string | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
   const [authTab, setAuthTab] = useState<"login" | "signup">("login");
@@ -5174,8 +5334,15 @@ export function MadbakHouseApp() {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] text-[#F2E3C6] antialiased">
+    <div className="min-h-screen overflow-x-hidden bg-[#050505] text-[#F2E3C6] antialiased">
       <Sidebar currentView={view} setView={guardedSetView} showAdmin={user?.role === "admin"} />
+      <MobileMenuDrawer
+        open={mobileMenuOpen}
+        onClose={() => setMobileMenuOpen(false)}
+        currentView={view}
+        setView={guardedSetView}
+        showAdmin={user?.role === "admin"}
+      />
       <TopNav
         balance={balance}
         setView={guardedSetView}
@@ -5186,7 +5353,9 @@ export function MadbakHouseApp() {
           void logout();
           setView("home");
         }}
+        onOpenMobileMenu={() => setMobileMenuOpen(true)}
       />
+      <MobileBottomNav currentView={view} setView={guardedSetView} onOpenMenu={() => setMobileMenuOpen(true)} />
 
       <AuthModal
         key={authMountKey}
@@ -5195,7 +5364,7 @@ export function MadbakHouseApp() {
         initialTab={authTab === "signup" ? "signup" : "login"}
       />
 
-      <main className="min-h-screen overflow-x-hidden pb-24 pt-28 transition-all duration-300 md:ml-64 md:pb-0 md:pt-20">
+      <main className="min-h-[100dvh] overflow-x-hidden pb-[calc(5rem+env(safe-area-inset-bottom))] pt-[5.25rem] transition-all duration-300 lg:ml-52 lg:pb-0 lg:pt-20 xl:ml-56 2xl:ml-64">
         <div className="border-b border-[#2A1D19] bg-[#0a0807] px-4 py-2 text-center text-[9px] font-bold uppercase tracking-widest text-[#BFAF91]/85">
           Demo platform only · Fake DBAK coins · No deposits or withdrawals · KYC flow is a local simulation unless wired to a
           licensed provider · No real-money gambling
@@ -5208,7 +5377,7 @@ export function MadbakHouseApp() {
       </main>
 
       <div
-        className="pointer-events-none fixed bottom-[24px] right-[24px] z-[100] flex max-w-[260px] flex-col items-end gap-1.5 max-md:bottom-[80px] max-md:right-3 max-md:left-auto"
+        className="pointer-events-none fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] right-3 z-[90] flex max-w-[260px] flex-col items-end gap-1.5 lg:bottom-6 lg:right-6"
         aria-live="polite"
       >
         <AnimatePresence mode="popLayout">
@@ -5255,20 +5424,6 @@ export function MadbakHouseApp() {
         </AnimatePresence>
       </div>
 
-      <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-[#0D0D0D]/90 backdrop-blur-xl border-t border-[#2A1D19] z-50 flex items-center justify-around px-4">
-        <button type="button" onClick={() => guardedSetView("home")} className={`p-2 ${view === "home" ? "text-[#B11226]" : "text-[#BFAF91]"}`}>
-          <LayoutGrid />
-        </button>
-        <button type="button" onClick={() => guardedSetView("casino")} className={`p-2 ${view === "casino" ? "text-[#B11226]" : "text-[#BFAF91]"}`}>
-          <Gamepad2 />
-        </button>
-        <button type="button" onClick={() => guardedSetView("wallet")} className={`p-2 ${view === "wallet" ? "text-[#B11226]" : "text-[#BFAF91]"}`}>
-          <Wallet />
-        </button>
-        <button type="button" onClick={() => guardedSetView("profile")} className={`p-2 ${view === "profile" ? "text-[#B11226]" : "text-[#BFAF91]"}`}>
-          <User />
-        </button>
-      </div>
     </div>
   );
 }
