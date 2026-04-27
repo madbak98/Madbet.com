@@ -72,7 +72,7 @@ type SignUpInput = {
 };
 
 type AuthResult = { ok: true; message?: string } | { ok: false; error: string };
-const AUTH_UNAVAILABLE: AuthResult = { ok: false, error: "Authentication service is not configured yet." };
+const AUTH_UNAVAILABLE: AuthResult = { ok: false, error: "Sign in is temporarily unavailable." };
 
 type AuthState = {
   users: MadbakUser[];
@@ -204,11 +204,9 @@ export const useAuthStore = create<AuthState>()(
 
         const supabase = getSupabaseBrowserClient();
         if (!supabase) return AUTH_UNAVAILABLE;
-        const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : undefined;
         const { error } = await supabase.auth.signUp({
           email: input.email.trim().toLowerCase(),
           password: input.password,
-          options: { emailRedirectTo: redirectTo, data: { username: input.username.trim(), dateOfBirth: input.dateOfBirth, country: input.country.trim() } },
         });
         if (error) return { ok: false, error: error.message };
         await syncSessionUser();
@@ -229,7 +227,7 @@ export const useAuthStore = create<AuthState>()(
         if (!isSupabaseConfigured()) return AUTH_UNAVAILABLE;
         const supabase = getSupabaseBrowserClient();
         if (!supabase) return AUTH_UNAVAILABLE;
-        const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : undefined;
+        const redirectTo = typeof window !== "undefined" ? window.location.origin : undefined;
         const { error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo } });
         if (error) return { ok: false, error: error.message };
         return { ok: true };

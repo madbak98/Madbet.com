@@ -267,18 +267,6 @@ export function AuthModal({
                       <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white font-black text-[#4285F4]">G</span>
                       Continue with Google
                     </button>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        setErr(null);
-                        const r = await signInWithOAuth("apple");
-                        if (!r.ok) setErr(r.error);
-                      }}
-                      className="flex w-full items-center justify-center gap-3 rounded-xl border border-[#BFAF91]/35 bg-[#050505] py-3 text-sm font-black text-[#F2E3C6] transition hover:border-[#B11226]"
-                    >
-                      <AppleGlyph className="h-9 w-9 shrink-0 text-[#F2E3C6]" />
-                      Continue with Apple
-                    </button>
                   </form>
                 )}
 
@@ -345,18 +333,6 @@ export function AuthModal({
                       <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white font-black text-[#4285F4]">G</span>
                       Sign up with Google
                     </button>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        setErr(null);
-                        const r = await signInWithOAuth("apple");
-                        if (!r.ok) setErr(r.error);
-                      }}
-                      className="flex w-full items-center justify-center gap-3 rounded-xl border border-[#BFAF91]/35 bg-[#050505] py-3 text-sm font-black text-[#F2E3C6] transition hover:border-[#B11226]"
-                    >
-                      <AppleGlyph className="h-9 w-9 shrink-0 text-[#F2E3C6]" />
-                      Sign up with Apple
-                    </button>
                   </form>
                 )}
             </>
@@ -375,14 +351,6 @@ function AuthDivider({ label }: { label: string }) {
       <span className="shrink-0 text-[10px] font-black uppercase tracking-widest text-[#BFAF91]">{label}</span>
       <div className="h-px flex-1 bg-[#2A1D19]" />
     </div>
-  );
-}
-
-function AppleGlyph({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M16.36 1.43c.35.41.56.98.5 1.55-.05.57-.35 1.1-.78 1.45-.43.35-.98.5-1.52.4-.35-.41-.56-.98-.5-1.55.05-.57.35-1.1.78-1.45.43-.35.98-.5 1.52-.4zm2.5 4.55c-1.1-.06-2.28.65-2.9.65-.65 0-1.65-.62-2.75-.6-1.42.02-2.73.82-3.45 2.08-1.47 2.55-.38 6.33 1.05 8.4.7 1.02 1.55 2.16 2.65 2.12 1.05-.04 1.45-.68 2.72-.68 1.27 0 1.63.68 2.75.65 1.14-.02 1.86-1.03 2.55-2.05.8-1.17 1.13-2.32 1.15-2.38-.02-.02-2.2-.85-2.22-3.35-.02-2.15 1.72-3.18 1.8-3.23-1-.48-1.42-1.32-2.85-1.35z" />
-    </svg>
   );
 }
 
