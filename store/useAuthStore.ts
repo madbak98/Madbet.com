@@ -72,7 +72,6 @@ type SignUpInput = {
 };
 
 type AuthResult = { ok: true; message?: string } | { ok: false; error: string };
-const AUTH_UNAVAILABLE: AuthResult = { ok: false, error: "Sign in is temporarily unavailable." };
 
 type AuthState = {
   users: MadbakUser[];
@@ -196,14 +195,13 @@ export const useAuthStore = create<AuthState>()(
       },
 
       signUp: async (input) => {
-        if (!isSupabaseConfigured()) return AUTH_UNAVAILABLE;
         if (!input.username.trim()) return { ok: false, error: "Username is required." };
         if (!isValidEmail(input.email)) return { ok: false, error: "Enter a valid email address." };
         if (!isAtLeast18(input.dateOfBirth)) return { ok: false, error: "You must be 18 or older." };
         if (!input.country.trim()) return { ok: false, error: "Country is required." };
 
         const supabase = getSupabaseBrowserClient();
-        if (!supabase) return AUTH_UNAVAILABLE;
+        if (!supabase) return { ok: false, error: "Auth client is unavailable." };
         const { error } = await supabase.auth.signUp({
           email: input.email.trim().toLowerCase(),
           password: input.password,
@@ -214,9 +212,8 @@ export const useAuthStore = create<AuthState>()(
       },
 
       login: async (email, password) => {
-        if (!isSupabaseConfigured()) return AUTH_UNAVAILABLE;
         const supabase = getSupabaseBrowserClient();
-        if (!supabase) return AUTH_UNAVAILABLE;
+        if (!supabase) return { ok: false, error: "Auth client is unavailable." };
         const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
         if (error) return { ok: false, error: error.message };
         await syncSessionUser("SIGNED_IN");
@@ -224,9 +221,8 @@ export const useAuthStore = create<AuthState>()(
       },
 
       signInWithOAuth: async (provider) => {
-        if (!isSupabaseConfigured()) return AUTH_UNAVAILABLE;
         const supabase = getSupabaseBrowserClient();
-        if (!supabase) return AUTH_UNAVAILABLE;
+        if (!supabase) return { ok: false, error: "Auth client is unavailable." };
         const redirectTo = typeof window !== "undefined" ? window.location.origin : undefined;
         const { error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo } });
         if (error) return { ok: false, error: error.message };
@@ -234,9 +230,8 @@ export const useAuthStore = create<AuthState>()(
       },
 
       forgotPassword: async (email) => {
-        if (!isSupabaseConfigured()) return AUTH_UNAVAILABLE;
         const supabase = getSupabaseBrowserClient();
-        if (!supabase) return AUTH_UNAVAILABLE;
+        if (!supabase) return { ok: false, error: "Auth client is unavailable." };
         const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/auth/reset-password` : undefined;
         const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), { redirectTo });
         if (error) return { ok: false, error: error.message };
@@ -244,9 +239,8 @@ export const useAuthStore = create<AuthState>()(
       },
 
       resetPassword: async (nextPassword) => {
-        if (!isSupabaseConfigured()) return AUTH_UNAVAILABLE;
         const supabase = getSupabaseBrowserClient();
-        if (!supabase) return AUTH_UNAVAILABLE;
+        if (!supabase) return { ok: false, error: "Auth client is unavailable." };
         const { error } = await supabase.auth.updateUser({ password: nextPassword });
         if (error) return { ok: false, error: error.message };
         return { ok: true };
