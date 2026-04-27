@@ -72,6 +72,7 @@ type SignUpInput = {
 };
 
 type AuthResult = { ok: true; message?: string } | { ok: false; error: string };
+const AUTH_UNAVAILABLE: AuthResult = { ok: false, error: "Authentication service is not configured yet." };
 
 type AuthState = {
   users: MadbakUser[];
@@ -107,10 +108,11 @@ let authSubUnsubscribe: (() => void) | null = null;
 async function syncSessionUser(event?: AuthChangeEvent) {
   const store = useAuthStore.getState();
   if (!isSupabaseConfigured()) {
-    store.logout();
+    void store.logout();
     return;
   }
   const supabase = getSupabaseBrowserClient();
+  if (!supabase) return;
   const { data } = await supabase.auth.getSession();
   const sessionUser = data.session?.user;
   if (!sessionUser) {
@@ -186,6 +188,7 @@ export const useAuthStore = create<AuthState>()(
         await syncSessionUser();
         if (authSubUnsubscribe) return;
         const supabase = getSupabaseBrowserClient();
+        if (!supabase) return;
         const { data } = supabase.auth.onAuthStateChange(async (event) => {
           await syncSessionUser(event);
         });
@@ -193,13 +196,14 @@ export const useAuthStore = create<AuthState>()(
       },
 
       signUp: async (input) => {
-        if (!isSupabaseConfigured()) return { ok: false, error: "Missing Supabase environment variables." };
+        if (!isSupabaseConfigured()) return AUTH_UNAVAILABLE;
         if (!input.username.trim()) return { ok: false, error: "Username is required." };
         if (!isValidEmail(input.email)) return { ok: false, error: "Enter a valid email address." };
         if (!isAtLeast18(input.dateOfBirth)) return { ok: false, error: "You must be 18 or older." };
         if (!input.country.trim()) return { ok: false, error: "Country is required." };
 
         const supabase = getSupabaseBrowserClient();
+        if (!supabase) return AUTH_UNAVAILABLE;
         const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : undefined;
         const { error } = await supabase.auth.signUp({
           email: input.email.trim().toLowerCase(),
@@ -212,8 +216,9 @@ export const useAuthStore = create<AuthState>()(
       },
 
       login: async (email, password) => {
-        if (!isSupabaseConfigured()) return { ok: false, error: "Missing Supabase environment variables." };
+        if (!isSupabaseConfigured()) return AUTH_UNAVAILABLE;
         const supabase = getSupabaseBrowserClient();
+        if (!supabase) return AUTH_UNAVAILABLE;
         const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
         if (error) return { ok: false, error: error.message };
         await syncSessionUser("SIGNED_IN");
@@ -221,8 +226,9 @@ export const useAuthStore = create<AuthState>()(
       },
 
       signInWithOAuth: async (provider) => {
-        if (!isSupabaseConfigured()) return { ok: false, error: "Missing Supabase environment variables." };
+        if (!isSupabaseConfigured()) return AUTH_UNAVAILABLE;
         const supabase = getSupabaseBrowserClient();
+        if (!supabase) return AUTH_UNAVAILABLE;
         const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : undefined;
         const { error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo } });
         if (error) return { ok: false, error: error.message };
@@ -230,8 +236,9 @@ export const useAuthStore = create<AuthState>()(
       },
 
       forgotPassword: async (email) => {
-        if (!isSupabaseConfigured()) return { ok: false, error: "Missing Supabase environment variables." };
+        if (!isSupabaseConfigured()) return AUTH_UNAVAILABLE;
         const supabase = getSupabaseBrowserClient();
+        if (!supabase) return AUTH_UNAVAILABLE;
         const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/auth/reset-password` : undefined;
         const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), { redirectTo });
         if (error) return { ok: false, error: error.message };
@@ -239,8 +246,9 @@ export const useAuthStore = create<AuthState>()(
       },
 
       resetPassword: async (nextPassword) => {
-        if (!isSupabaseConfigured()) return { ok: false, error: "Missing Supabase environment variables." };
+        if (!isSupabaseConfigured()) return AUTH_UNAVAILABLE;
         const supabase = getSupabaseBrowserClient();
+        if (!supabase) return AUTH_UNAVAILABLE;
         const { error } = await supabase.auth.updateUser({ password: nextPassword });
         if (error) return { ok: false, error: error.message };
         return { ok: true };
@@ -249,7 +257,9 @@ export const useAuthStore = create<AuthState>()(
       logout: async () => {
         if (isSupabaseConfigured()) {
           const supabase = getSupabaseBrowserClient();
-          await supabase.auth.signOut();
+          if (supabase) {
+            await supabase.auth.signOut();
+          }
         }
         set({ sessionUserId: null });
       },
