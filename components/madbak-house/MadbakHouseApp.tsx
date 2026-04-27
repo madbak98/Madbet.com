@@ -1833,6 +1833,8 @@ function RouletteGame({
   const [spinRows, setSpinRows] = useState<RouletteSpinRow[]>([]);
   const [recentNumbers, setRecentNumbers] = useState<number[]>([]);
   const hasSettledRef = useRef(false);
+  const wheelRef = useRef<HTMLDivElement | null>(null);
+  const [wheelSize, setWheelSize] = useState(360);
 
   const totalBet = useMemo(() => bets.reduce((sum, b) => sum + b.amount, 0), [bets]);
   const warningOverBalance = totalBet > balance;
@@ -1948,6 +1950,20 @@ function RouletteGame({
 
   const getCellBet = (id: string) => bets.find((b) => b.id === id)?.amount ?? 0;
   const resultColor = resultNumber == null ? null : getNumberColor(resultNumber);
+  const pocketRadius = wheelSize * 0.4;
+  const ballRadius = wheelSize * 0.45;
+
+  useEffect(() => {
+    const el = wheelRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      const box = entries[0]?.contentRect;
+      if (!box) return;
+      setWheelSize(Math.max(240, Math.min(box.width, box.height)));
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-[320px_minmax(0,1fr)_320px] lg:gap-6">
@@ -2027,28 +2043,32 @@ function RouletteGame({
       <section className="order-2 min-w-0 space-y-4 lg:order-2">
         <div className="rounded-2xl border border-[#2A1D19] bg-[#15110F] p-4 overflow-hidden">
           <div className="flex min-h-[420px] items-center justify-center overflow-hidden rounded-2xl border border-[#F2E3C6]/10 bg-[#0D0D0D]">
-            <div className="roulette-wheel relative mx-auto aspect-square w-full max-w-[420px] overflow-hidden rounded-full">
+            <div ref={wheelRef} className="roulette-wheel relative mx-auto aspect-square w-full max-w-[420px] overflow-hidden rounded-full">
               {/* Layer A: outer red ring */}
-              <div className="absolute inset-[6%] rounded-full border-[10px] border-[#B11226] bg-gradient-to-br from-[#0d0a09] via-[#191210] to-[#050505]" />
+              <div className="absolute inset-[7%] rounded-full border-[10px] border-[#B11226] bg-gradient-to-br from-[#0d0a09] via-[#191210] to-[#050505]" />
+              <div className="absolute inset-[16%] rounded-full border border-[#C9A45C]/20 bg-[#090808]" />
 
               {/* Layer B: rotating pocket ring */}
               <motion.div
                 animate={{ rotate: wheelRotation }}
                 transition={{ duration: 3.6, ease: [0.1, 0.75, 0.2, 1] }}
-                className="absolute inset-[14%] rounded-full"
+                className="absolute inset-0"
               >
                 {ROULETTE_WHEEL_ORDER.map((n, i) => {
                   const angle = (i / ROULETTE_WHEEL_ORDER.length) * 360;
-                  const rad = (angle * Math.PI) / 180;
-                  const radiusPct = 36;
-                  const x = 50 + radiusPct * Math.sin(rad);
-                  const y = 50 - radiusPct * Math.cos(rad);
                   const clr = getNumberColor(n);
                   const pocket = clr === "red" ? "bg-[#7d1222]" : clr === "black" ? "bg-[#111111]" : "bg-[#2d5a2d]";
                   return (
-                    <div key={n} className="absolute" style={{ left: `${x}%`, top: `${y}%`, transform: "translate(-50%, -50%)" }}>
-                      <div className={`grid h-7 w-[22px] place-items-center rounded-[4px] border border-[#C9A45C]/25 ${pocket}`}>
-                        <span className="text-[8px] font-black text-[#F2E3C6]">{n}</span>
+                    <div
+                      key={n}
+                      className="absolute left-1/2 top-1/2"
+                      style={{
+                        transform: `translate(-50%, -50%) rotate(${angle}deg) translateY(-${pocketRadius}px) rotate(90deg)`,
+                        transformOrigin: "center center",
+                      }}
+                    >
+                      <div className={`grid h-[28px] w-[18px] place-items-center rounded-[5px] border border-[rgba(242,227,198,0.15)] shadow-[0_0_6px_rgba(0,0,0,0.28)] ${pocket}`}>
+                        <span className="text-[7px] font-black leading-none text-[#F2E3C6]">{n}</span>
                       </div>
                     </div>
                   );
@@ -2059,13 +2079,16 @@ function RouletteGame({
               <motion.div
                 animate={{ rotate: ballRotation }}
                 transition={{ duration: 3.6, ease: [0.1, 0.75, 0.2, 1] }}
-                className="absolute inset-[8%] rounded-full"
+                className="absolute inset-0 rounded-full"
               >
-                <div className="absolute left-1/2 top-1/2 h-3.5 w-3.5 rounded-full bg-[#F2E3C6] shadow-[0_0_14px_rgba(242,227,198,0.75)]" style={{ transform: "translate(-50%, -42%)" }} />
+                <div
+                  className="absolute left-1/2 top-1/2 h-[12px] w-[12px] rounded-full bg-[#F2E3C6] shadow-[0_0_14px_rgba(242,227,198,0.75)]"
+                  style={{ transform: `translate(-50%, -50%) rotate(0deg) translateY(-${ballRadius}px)` }}
+                />
               </motion.div>
 
               {/* Layer D: center hub */}
-              <div className="absolute left-1/2 top-1/2 grid h-[30%] w-[30%] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-[#C9A45C]/50 bg-[#0D0D0D]">
+              <div className="absolute left-1/2 top-1/2 grid h-[24%] w-[24%] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-[#C9A45C]/50 bg-[#0D0D0D]">
                 <div className="text-center">
                   <p className="text-[9px] font-black uppercase tracking-widest text-[#BFAF91]">Result</p>
                   <p className={`text-3xl font-black ${resultColor === "red" ? "text-[#E21B35]" : resultColor === "black" ? "text-[#F2E3C6]" : "text-[#C9A45C]"}`}>
