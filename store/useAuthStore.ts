@@ -12,7 +12,7 @@ import {
   INITIAL_DEMO_BALANCE,
 } from "@/lib/auth/types";
 import { isAtLeast18, isValidEmail } from "@/lib/auth/validators";
-import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/auth/supabase";
+import { supabase } from "@/lib/supabaseClient";
 
 const STORAGE_KEY = "madbak-house-auth";
 
@@ -77,7 +77,7 @@ function authClientMissingResult(): AuthResult {
   console.error("Supabase URL:", !!process.env.NEXT_PUBLIC_SUPABASE_URL);
   console.error("Supabase ANON:", !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
   console.error("Supabase PUBLISHABLE:", !!process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
-  return { ok: false, error: "Unable to initialize authentication client." };
+  return { ok: false, error: "Auth config missing. Check Vercel environment variables." };
 }
 
 type AuthState = {
@@ -113,12 +113,10 @@ let authSubUnsubscribe: (() => void) | null = null;
 
 async function syncSessionUser(event?: AuthChangeEvent) {
   const store = useAuthStore.getState();
-  if (!isSupabaseConfigured()) {
+  if (!supabase) {
     void store.logout();
     return;
   }
-  const supabase = getSupabaseBrowserClient();
-  if (!supabase) return;
   const { data } = await supabase.auth.getSession();
   const sessionUser = data.session?.user;
   if (!sessionUser) {
@@ -190,11 +188,9 @@ export const useAuthStore = create<AuthState>()(
       getUserByEmail: (email) => get().users.find((u) => u.email === email.trim().toLowerCase()),
 
       initializeAuth: async () => {
-        if (!isSupabaseConfigured()) return;
+        if (!supabase) return;
         await syncSessionUser();
         if (authSubUnsubscribe) return;
-        const supabase = getSupabaseBrowserClient();
-        if (!supabase) return;
         const { data } = supabase.auth.onAuthStateChange(async (event) => {
           await syncSessionUser(event);
         });
@@ -207,7 +203,6 @@ export const useAuthStore = create<AuthState>()(
         if (!isAtLeast18(input.dateOfBirth)) return { ok: false, error: "You must be 18 or older." };
         if (!input.country.trim()) return { ok: false, error: "Country is required." };
 
-        const supabase = getSupabaseBrowserClient();
         if (!supabase) return authClientMissingResult();
         const { error } = await supabase.auth.signUp({
           email: input.email.trim().toLowerCase(),
@@ -219,7 +214,6 @@ export const useAuthStore = create<AuthState>()(
       },
 
       login: async (email, password) => {
-        const supabase = getSupabaseBrowserClient();
         if (!supabase) return authClientMissingResult();
         const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
         if (error) return { ok: false, error: error.message };
@@ -228,7 +222,6 @@ export const useAuthStore = create<AuthState>()(
       },
 
       signInWithOAuth: async (provider) => {
-        const supabase = getSupabaseBrowserClient();
         if (!supabase) return authClientMissingResult();
         const redirectTo = typeof window !== "undefined" ? window.location.origin : undefined;
         const { error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo } });
@@ -237,7 +230,6 @@ export const useAuthStore = create<AuthState>()(
       },
 
       forgotPassword: async (email) => {
-        const supabase = getSupabaseBrowserClient();
         if (!supabase) return authClientMissingResult();
         const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/auth/reset-password` : undefined;
         const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), { redirectTo });
@@ -246,7 +238,6 @@ export const useAuthStore = create<AuthState>()(
       },
 
       resetPassword: async (nextPassword) => {
-        const supabase = getSupabaseBrowserClient();
         if (!supabase) return authClientMissingResult();
         const { error } = await supabase.auth.updateUser({ password: nextPassword });
         if (error) return { ok: false, error: error.message };
@@ -254,11 +245,8 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: async () => {
-        if (isSupabaseConfigured()) {
-          const supabase = getSupabaseBrowserClient();
-          if (supabase) {
-            await supabase.auth.signOut();
-          }
+        if (supabase) {
+          await supabase.auth.signOut();
         }
         set({ sessionUserId: null });
       },
