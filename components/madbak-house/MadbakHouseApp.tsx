@@ -52,7 +52,6 @@ import { MadbakKycView } from "@/components/madbak-house/verify/MadbakKycView";
 import { MadbakAdminDashboard } from "@/components/madbak-house/admin/MadbakAdminDashboard";
 import { SportsbookPage } from "@/components/sports/SportsbookPage";
 import { GlobalSearch } from "@/components/madbak-house/GlobalSearch";
-import { DemoGamePlaceholder } from "@/components/madbak-house/DemoGamePlaceholder";
 import { SupportForm } from "@/components/support/SupportForm";
 
 const COLORS = {
@@ -1775,8 +1774,793 @@ function SlotsGame({
   );
 }
 
+type CoinSide = "heads" | "tails";
+
+function CoinflipGame({
+  balance,
+  onResult,
+  onNotify,
+}: {
+  balance: number;
+  onResult: (delta: number) => void;
+  onNotify: (msg: string, type?: NotificationType, duration?: number, priority?: NotificationPriority) => void;
+}) {
+  const [betAmount, setBetAmount] = useState(10);
+  const [choice, setChoice] = useState<CoinSide>("heads");
+  const [isFlipping, setIsFlipping] = useState(false);
+  const [lastResult, setLastResult] = useState<CoinSide | null>(null);
+  const [recentFlips, setRecentFlips] = useState<CoinSide[]>([]);
+  const [coinRotation, setCoinRotation] = useState(0);
+  const [didWin, setDidWin] = useState(false);
+
+  const applyHalf = () => setBetAmount((v) => Math.max(1, Math.floor(v / 2)));
+  const applyDouble = () => setBetAmount((v) => Math.max(1, Math.min(balance, v * 2)));
+  const applyMax = () => setBetAmount(Math.max(1, Math.floor(balance)));
+
+  const flip = () => {
+    if (isFlipping) return;
+    const wager = Math.floor(betAmount);
+    if (wager <= 0) {
+      onNotify("Enter a valid bet amount", "error", 1000, "normal");
+      return;
+    }
+    if (wager > balance) {
+      onNotify("Insufficient balance", "error", 1000, "normal");
+      return;
+    }
+
+    setIsFlipping(true);
+    setDidWin(false);
+    onResult(-wager);
+
+    const result: CoinSide = Math.random() < 0.5 ? "heads" : "tails";
+    const targetFaceRotation = result === "heads" ? 0 : 180;
+    setCoinRotation((prev) => prev + 1800 + targetFaceRotation - (prev % 360));
+
+    window.setTimeout(() => {
+      setLastResult(result);
+      setRecentFlips((prev) => [result, ...prev].slice(0, 12));
+      const won = result === choice;
+      setDidWin(won);
+      if (won) {
+        onResult(wager * 2);
+        onNotify(`You won +${wager} DBAK`, "success", 1200, "normal");
+      } else {
+        onNotify("You lost this flip", "error", 1000, "normal");
+      }
+      setIsFlipping(false);
+    }, 1300);
+  };
+
+  const coinBase = "absolute inset-0 grid place-items-center rounded-full border text-2xl font-black uppercase";
+
+  return (
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[320px_minmax(0,1fr)_320px] lg:gap-6">
+      <aside className="rounded-2xl border border-[#2A1D19] bg-[#15110F] p-4">
+        <div className="rounded-xl border border-[#2A1D19] bg-[#0D0D0D] p-3">
+          <p className="text-[10px] font-black uppercase tracking-widest text-[#BFAF91]">Bet amount</p>
+          <input
+            type="number"
+            min={1}
+            max={Math.max(1, Math.floor(balance))}
+            value={Number.isFinite(betAmount) ? betAmount : 0}
+            onChange={(e) => setBetAmount(Math.max(1, Math.floor(Number(e.target.value) || 0)))}
+            disabled={isFlipping}
+            className="mt-2 w-full rounded-lg border border-[#2A1D19] bg-[#050505] px-3 py-2 font-mono text-base text-[#F2E3C6] focus:border-[#B11226] focus:outline-none"
+          />
+          <div className="mt-2 grid grid-cols-3 gap-2">
+            <Button variant="secondary" className="h-9 text-xs" onClick={applyHalf} disabled={isFlipping}>
+              1/2
+            </Button>
+            <Button variant="secondary" className="h-9 text-xs" onClick={applyDouble} disabled={isFlipping}>
+              2x
+            </Button>
+            <Button variant="secondary" className="h-9 text-xs" onClick={applyMax} disabled={isFlipping}>
+              MAX
+            </Button>
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-xl border border-[#2A1D19] bg-[#0D0D0D] p-3">
+          <p className="text-[10px] font-black uppercase tracking-widest text-[#BFAF91]">Pick side</p>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            {(["heads", "tails"] as const).map((side) => (
+              <button
+                key={side}
+                type="button"
+                disabled={isFlipping}
+                onClick={() => setChoice(side)}
+                className={`rounded-lg border px-3 py-2 text-xs font-black uppercase tracking-wider transition ${
+                  choice === side
+                    ? "border-[#C9A45C] bg-[#3A0B10]/30 text-[#F2E3C6]"
+                    : "border-[#2A1D19] bg-[#15110F] text-[#BFAF91] hover:border-[#B11226]"
+                }`}
+              >
+                {side}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <Button variant="primary" className="mt-4 h-12 w-full text-sm" onClick={flip} disabled={isFlipping}>
+          {isFlipping ? "FLIPPING..." : "FLIP"}
+        </Button>
+      </aside>
+
+      <section className="rounded-2xl border border-[#2A1D19] bg-[#15110F] p-4">
+        <div className="flex min-h-[420px] items-center justify-center rounded-2xl border border-[#F2E3C6]/10 bg-[#0D0D0D]">
+          <motion.div
+            animate={{ rotateY: coinRotation }}
+            transition={{ duration: 1.3, ease: [0.18, 0.75, 0.24, 1] }}
+            style={{ transformStyle: "preserve-3d" }}
+            className={`relative h-56 w-56 rounded-full ${didWin ? "drop-shadow-[0_0_25px_rgba(201,164,92,0.85)]" : ""}`}
+          >
+            <div
+              className={`${coinBase} border-[#C9A45C] bg-gradient-to-br from-[#fff1ba] via-[#C9A45C] to-[#8b6a2e] text-[#2A1D19]`}
+              style={{ backfaceVisibility: "hidden" }}
+            >
+              H
+            </div>
+            <div
+              className={`${coinBase} border-[#C9A45C] bg-gradient-to-br from-[#f6dc9a] via-[#b9923e] to-[#6c4f1f] text-[#2A1D19]`}
+              style={{ transform: "rotateY(180deg)", backfaceVisibility: "hidden" }}
+            >
+              T
+            </div>
+          </motion.div>
+        </div>
+        <p className="mt-3 text-center text-xs text-[#BFAF91]">{isFlipping ? "Flipping..." : "Choose heads or tails and flip"}</p>
+      </section>
+
+      <aside className="rounded-2xl border border-[#2A1D19] bg-[#15110F] p-4">
+        <div className="rounded-xl border border-[#2A1D19] bg-[#0D0D0D] p-3">
+          <p className="text-[10px] font-black uppercase tracking-widest text-[#BFAF91]">Last result</p>
+          <p className="mt-2 text-2xl font-black uppercase text-[#F2E3C6]">{lastResult ?? "—"}</p>
+          <p className={`mt-1 text-xs font-bold ${lastResult == null ? "text-[#BFAF91]" : lastResult === choice ? "text-[#C9A45C]" : "text-[#E21B35]"}`}>
+            {lastResult == null ? "No flips yet" : lastResult === choice ? "You won" : "You lost"}
+          </p>
+        </div>
+
+        <div className="mt-4 rounded-xl border border-[#2A1D19] bg-[#0D0D0D] p-3">
+          <h3 className="text-[10px] font-black uppercase tracking-widest text-[#BFAF91]">Recent flips</h3>
+          {recentFlips.length === 0 ? (
+            <p className="mt-2 text-xs text-[#BFAF91]">No flips yet.</p>
+          ) : (
+            <ul className="mt-2 max-h-52 space-y-1 overflow-y-auto text-xs">
+              {recentFlips.map((r, idx) => (
+                <li key={`${r}-${idx}`} className="flex items-center justify-between rounded border border-[#1f1613] bg-[#15110F] px-2 py-1">
+                  <span className="font-black uppercase text-[#F2E3C6]">{r}</span>
+                  <span className={r === "heads" ? "text-[#C9A45C]" : "text-[#BFAF91]"}>{r === "heads" ? "H" : "T"}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function kenoMultiplier(matches: number): number {
+  if (matches <= 2) return 0;
+  if (matches === 3) return 1;
+  if (matches === 4) return 2;
+  if (matches === 5) return 5;
+  if (matches === 6) return 10;
+  return 20;
+}
+
+function sampleUniqueNumbers(max: number, count: number): number[] {
+  const pool = Array.from({ length: max }, (_, i) => i + 1);
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j]!, pool[i]!];
+  }
+  return pool.slice(0, count).sort((a, b) => a - b);
+}
+
+function KenoGame({
+  balance,
+  onResult,
+  onNotify,
+}: {
+  balance: number;
+  onResult: (delta: number) => void;
+  onNotify: (msg: string, type?: NotificationType, duration?: number, priority?: NotificationPriority) => void;
+}) {
+  const [betAmount, setBetAmount] = useState(10);
+  const [picked, setPicked] = useState<number[]>([]);
+  const [drawnNumbers, setDrawnNumbers] = useState<number[]>([]);
+  const [revealedCount, setRevealedCount] = useState(0);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [lastMatches, setLastMatches] = useState<number>(0);
+  const [lastPayout, setLastPayout] = useState<number>(0);
+
+  const matchedNumbers = useMemo(
+    () => picked.filter((n) => drawnNumbers.slice(0, revealedCount).includes(n)),
+    [picked, drawnNumbers, revealedCount],
+  );
+
+  const togglePick = (n: number) => {
+    if (isDrawing) return;
+    setPicked((prev) => {
+      if (prev.includes(n)) return prev.filter((x) => x !== n);
+      if (prev.length >= 10) return prev;
+      return [...prev, n].sort((a, b) => a - b);
+    });
+  };
+
+  const clearPicks = () => {
+    if (isDrawing) return;
+    setPicked([]);
+  };
+
+  const quickPick = () => {
+    if (isDrawing) return;
+    setPicked(sampleUniqueNumbers(40, 10));
+  };
+
+  const play = () => {
+    if (isDrawing) return;
+    const wager = Math.floor(betAmount);
+    if (wager <= 0) {
+      onNotify("Enter a valid bet amount", "error", 1000, "normal");
+      return;
+    }
+    if (picked.length === 0) {
+      onNotify("Pick at least one number", "error", 1000, "normal");
+      return;
+    }
+    if (wager > balance) {
+      onNotify("Insufficient balance", "error", 1000, "normal");
+      return;
+    }
+
+    const draw = sampleUniqueNumbers(40, 10);
+    onResult(-wager);
+    setIsDrawing(true);
+    setDrawnNumbers(draw);
+    setRevealedCount(0);
+    setLastMatches(0);
+    setLastPayout(0);
+
+    let revealed = 0;
+    const timer = window.setInterval(() => {
+      revealed += 1;
+      setRevealedCount(revealed);
+      if (revealed >= draw.length) {
+        window.clearInterval(timer);
+        const matches = picked.filter((n) => draw.includes(n)).length;
+        const multiplier = kenoMultiplier(matches);
+        const payout = wager * multiplier;
+        setLastMatches(matches);
+        setLastPayout(payout);
+        if (payout > 0) onResult(payout);
+        if (matches >= 7) onNotify(`BIG WIN +${Math.floor(payout - wager)} DBAK`, "success", 2200, "big");
+        else if (payout > 0) onNotify(`Matched ${matches} · +${Math.floor(payout - wager)} DBAK`, "success", 1200, "normal");
+        else onNotify("No payout this draw", "info", 1000, "normal");
+        setIsDrawing(false);
+      }
+    }, 130);
+  };
+
+  return (
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[320px_minmax(0,1fr)_320px] lg:gap-6">
+      <aside className="rounded-2xl border border-[#2A1D19] bg-[#15110F] p-4">
+        <div className="rounded-xl border border-[#2A1D19] bg-[#0D0D0D] p-3">
+          <p className="text-[10px] font-black uppercase tracking-widest text-[#BFAF91]">Bet amount</p>
+          <input
+            type="number"
+            min={1}
+            max={Math.max(1, Math.floor(balance))}
+            value={Number.isFinite(betAmount) ? betAmount : 0}
+            onChange={(e) => setBetAmount(Math.max(1, Math.floor(Number(e.target.value) || 0)))}
+            disabled={isDrawing}
+            className="mt-2 w-full rounded-lg border border-[#2A1D19] bg-[#050505] px-3 py-2 font-mono text-base text-[#F2E3C6] focus:border-[#B11226] focus:outline-none"
+          />
+          <p className="mt-2 text-[11px] text-[#BFAF91]">
+            Picks: <span className="font-mono text-[#F2E3C6]">{picked.length}</span>/10
+          </p>
+        </div>
+
+        <div className="mt-4 rounded-xl border border-[#2A1D19] bg-[#0D0D0D] p-3 text-xs text-[#BFAF91]">
+          <p className="text-[10px] font-black uppercase tracking-widest">Potential payout preview</p>
+          <ul className="mt-2 space-y-1 font-mono">
+            <li>3 matches: {betAmount * 1}</li>
+            <li>4 matches: {betAmount * 2}</li>
+            <li>5 matches: {betAmount * 5}</li>
+            <li>6 matches: {betAmount * 10}</li>
+            <li>7+ matches: {betAmount * 20}</li>
+          </ul>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <Button variant="secondary" className="h-10 text-xs" onClick={clearPicks} disabled={isDrawing || picked.length === 0}>
+            CLEAR PICKS
+          </Button>
+          <Button variant="secondary" className="h-10 text-xs" onClick={quickPick} disabled={isDrawing}>
+            QUICK PICK
+          </Button>
+        </div>
+        <Button variant="primary" className="mt-3 h-12 w-full text-sm" onClick={play} disabled={isDrawing}>
+          {isDrawing ? "DRAWING..." : "PLAY"}
+        </Button>
+      </aside>
+
+      <section className="rounded-2xl border border-[#2A1D19] bg-[#15110F] p-4">
+        <div className="grid grid-cols-5 gap-2 rounded-2xl border border-[#2A1D19] bg-[#0D0D0D] p-3">
+          {Array.from({ length: 40 }, (_, i) => i + 1).map((n) => {
+            const revealedDraw = drawnNumbers.slice(0, revealedCount);
+            const isPicked = picked.includes(n);
+            const isDrawn = revealedDraw.includes(n);
+            const isMatch = isPicked && isDrawn;
+            return (
+              <button
+                key={n}
+                type="button"
+                disabled={isDrawing}
+                onClick={() => togglePick(n)}
+                className={`h-12 rounded-lg border text-sm font-black transition ${
+                  isMatch
+                    ? "border-[#C9A45C] bg-[#3A0B10]/40 text-[#F2E3C6] shadow-[0_0_14px_rgba(201,164,92,0.45)]"
+                    : isDrawn
+                      ? "border-[#2d5a2d] bg-[#1a2d1a] text-[#7ddf8a]"
+                      : isPicked
+                        ? "border-[#B11226] bg-[#3A0B10]/25 text-[#F2E3C6]"
+                        : "border-[#2A1D19] bg-[#15110F] text-[#BFAF91] hover:border-[#B11226]"
+                }`}
+              >
+                {n}
+              </button>
+            );
+          })}
+        </div>
+        <p className="mt-3 text-center text-xs text-[#BFAF91]">{isDrawing ? "Drawing numbers..." : "Pick up to 10 numbers from 1 to 40"}</p>
+      </section>
+
+      <aside className="rounded-2xl border border-[#2A1D19] bg-[#15110F] p-4">
+        <div className="rounded-xl border border-[#2A1D19] bg-[#0D0D0D] p-3">
+          <p className="text-[10px] font-black uppercase tracking-widest text-[#BFAF91]">Last result</p>
+          <p className="mt-2 text-sm text-[#F2E3C6]">
+            Matches: <span className="font-mono font-black">{lastMatches}</span>
+          </p>
+          <p className="mt-1 text-sm text-[#F2E3C6]">
+            Payout: <span className={`font-mono font-black ${lastPayout > 0 ? "text-[#C9A45C]" : "text-[#BFAF91]"}`}>{lastPayout}</span>
+          </p>
+        </div>
+
+        <div className="mt-4 rounded-xl border border-[#2A1D19] bg-[#0D0D0D] p-3">
+          <h3 className="text-[10px] font-black uppercase tracking-widest text-[#BFAF91]">Recent draws</h3>
+          {drawnNumbers.length === 0 ? (
+            <p className="mt-2 text-xs text-[#BFAF91]">No draws yet.</p>
+          ) : (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {drawnNumbers.slice(0, revealedCount).map((n) => (
+                <span
+                  key={n}
+                  className={`rounded-full border px-2 py-0.5 text-xs font-black ${
+                    picked.includes(n)
+                      ? "border-[#C9A45C] bg-[#3A0B10]/35 text-[#F2E3C6]"
+                      : "border-[#2A1D19] bg-[#15110F] text-[#BFAF91]"
+                  }`}
+                >
+                  {n}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-4 rounded-xl border border-[#2A1D19] bg-[#0D0D0D] p-3">
+          <h3 className="text-[10px] font-black uppercase tracking-widest text-[#BFAF91]">Matched numbers</h3>
+          {matchedNumbers.length === 0 ? (
+            <p className="mt-2 text-xs text-[#BFAF91]">No matches</p>
+          ) : (
+            <p className="mt-2 font-mono text-sm text-[#C9A45C]">{matchedNumbers.join(", ")}</p>
+          )}
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+type BaccaratSide = "player" | "banker" | "tie";
+type BaccaratCard = { rank: string; suit: string; value: number; id: string };
+
+function drawBaccaratCard(): BaccaratCard {
+  const ranks = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"] as const;
+  const suits = ["♠", "♥", "♦", "♣"] as const;
+  const rank = ranks[Math.floor(Math.random() * ranks.length)]!;
+  const suit = suits[Math.floor(Math.random() * suits.length)]!;
+  const value = rank === "A" ? 1 : ["10", "J", "Q", "K"].includes(rank) ? 0 : Number(rank);
+  return { rank, suit, value, id: crypto.randomUUID() };
+}
+
+function baccaratTotal(cards: BaccaratCard[]): number {
+  return cards.reduce((sum, c) => sum + c.value, 0) % 10;
+}
+
+function BaccaratGame({
+  balance,
+  onResult,
+  onNotify,
+}: {
+  balance: number;
+  onResult: (delta: number) => void;
+  onNotify: (msg: string, type?: NotificationType, duration?: number, priority?: NotificationPriority) => void;
+}) {
+  const [betSide, setBetSide] = useState<BaccaratSide>("player");
+  const [betAmount, setBetAmount] = useState(10);
+  const [isDealing, setIsDealing] = useState(false);
+  const [playerCards, setPlayerCards] = useState<BaccaratCard[]>([]);
+  const [bankerCards, setBankerCards] = useState<BaccaratCard[]>([]);
+  const [revealedPlayer, setRevealedPlayer] = useState(0);
+  const [revealedBanker, setRevealedBanker] = useState(0);
+  const [winner, setWinner] = useState<BaccaratSide | null>(null);
+  const [history, setHistory] = useState<BaccaratSide[]>([]);
+
+  const playerTotal = baccaratTotal(playerCards.slice(0, revealedPlayer));
+  const bankerTotal = baccaratTotal(bankerCards.slice(0, revealedBanker));
+
+  const clearBet = () => {
+    if (isDealing) return;
+    setBetAmount(10);
+    setBetSide("player");
+  };
+
+  const settle = (pWinner: BaccaratSide, wager: number) => {
+    setWinner(pWinner);
+    setHistory((prev) => [pWinner, ...prev].slice(0, 20));
+    const multiplier = pWinner === "player" ? 2 : pWinner === "banker" ? 1.95 : 8;
+    if (betSide === pWinner) {
+      const payout = wager * multiplier;
+      onResult(payout);
+      if (pWinner === "tie") onNotify(`TIE hit! +${Math.floor(payout - wager)} DBAK`, "success", 1700, "big");
+      else onNotify(`You won +${Math.floor(payout - wager)} DBAK`, "success", 1200, "normal");
+    } else {
+      onNotify("Round lost", "error", 1000, "normal");
+    }
+    setIsDealing(false);
+  };
+
+  const deal = () => {
+    if (isDealing) return;
+    const wager = Math.floor(betAmount);
+    if (wager <= 0) {
+      onNotify("Enter a valid bet amount", "error", 1000, "normal");
+      return;
+    }
+    if (wager > balance) {
+      onNotify("Insufficient balance", "error", 1000, "normal");
+      return;
+    }
+
+    onResult(-wager);
+    setIsDealing(true);
+    setWinner(null);
+
+    const pCards: BaccaratCard[] = [drawBaccaratCard(), drawBaccaratCard()];
+    const bCards: BaccaratCard[] = [drawBaccaratCard(), drawBaccaratCard()];
+
+    let pTotal = baccaratTotal(pCards);
+    let bTotal = baccaratTotal(bCards);
+    const natural = pTotal >= 8 || bTotal >= 8;
+
+    if (!natural && pTotal <= 5) {
+      pCards.push(drawBaccaratCard());
+      pTotal = baccaratTotal(pCards);
+    }
+    if (!natural && bTotal <= 5) {
+      bCards.push(drawBaccaratCard());
+      bTotal = baccaratTotal(bCards);
+    }
+
+    setPlayerCards(pCards);
+    setBankerCards(bCards);
+    setRevealedPlayer(0);
+    setRevealedBanker(0);
+
+    const totalReveals = pCards.length + bCards.length;
+    let step = 0;
+    const timer = window.setInterval(() => {
+      step += 1;
+      const playerStep = Math.ceil(step / 2);
+      const bankerStep = Math.floor(step / 2);
+      setRevealedPlayer(Math.min(playerStep, pCards.length));
+      setRevealedBanker(Math.min(bankerStep, bCards.length));
+      if (step >= totalReveals) {
+        window.clearInterval(timer);
+        const finalPlayer = baccaratTotal(pCards);
+        const finalBanker = baccaratTotal(bCards);
+        const pWinner: BaccaratSide = finalPlayer > finalBanker ? "player" : finalBanker > finalPlayer ? "banker" : "tie";
+        settle(pWinner, wager);
+      }
+    }, 220);
+  };
+
+  return (
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[320px_minmax(0,1fr)_320px] lg:gap-6">
+      <aside className="rounded-2xl border border-[#2A1D19] bg-[#15110F] p-4">
+        <p className="text-[10px] font-black uppercase tracking-widest text-[#BFAF91]">Bet on</p>
+        <div className="mt-2 grid grid-cols-3 gap-2">
+          {(["player", "banker", "tie"] as const).map((side) => (
+            <button
+              key={side}
+              type="button"
+              disabled={isDealing}
+              onClick={() => setBetSide(side)}
+              className={`rounded-lg border px-2 py-2 text-xs font-black uppercase transition ${
+                betSide === side ? "border-[#C9A45C] bg-[#3A0B10]/30 text-[#F2E3C6]" : "border-[#2A1D19] bg-[#0D0D0D] text-[#BFAF91] hover:border-[#B11226]"
+              }`}
+            >
+              {side}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-4 rounded-xl border border-[#2A1D19] bg-[#0D0D0D] p-3">
+          <p className="text-[10px] font-black uppercase tracking-widest text-[#BFAF91]">Bet amount</p>
+          <input
+            type="number"
+            min={1}
+            max={Math.max(1, Math.floor(balance))}
+            value={Number.isFinite(betAmount) ? betAmount : 0}
+            onChange={(e) => setBetAmount(Math.max(1, Math.floor(Number(e.target.value) || 0)))}
+            disabled={isDealing}
+            className="mt-2 w-full rounded-lg border border-[#2A1D19] bg-[#050505] px-3 py-2 font-mono text-base text-[#F2E3C6] focus:border-[#B11226] focus:outline-none"
+          />
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <Button variant="secondary" className="h-10 text-xs" onClick={clearBet} disabled={isDealing}>
+            CLEAR BET
+          </Button>
+          <Button variant="primary" className="h-10 text-xs" onClick={deal} disabled={isDealing}>
+            {isDealing ? "DEALING..." : "DEAL"}
+          </Button>
+        </div>
+      </aside>
+
+      <section className="rounded-2xl border border-[#2A1D19] bg-[#15110F] p-4">
+        <div className="rounded-2xl border border-[#2A1D19] bg-[#0D0D0D] p-4">
+          {(["player", "banker"] as const).map((side) => {
+            const cards = side === "player" ? playerCards.slice(0, revealedPlayer) : bankerCards.slice(0, revealedBanker);
+            const total = side === "player" ? playerTotal : bankerTotal;
+            const isWinner = winner === side;
+            return (
+              <div key={side} className={`mb-4 rounded-xl border p-3 ${isWinner ? "border-[#C9A45C] bg-[#3A0B10]/25" : "border-[#2A1D19] bg-[#15110F]"}`}>
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-xs font-black uppercase tracking-widest text-[#BFAF91]">{side}</p>
+                  <p className="font-mono text-[#F2E3C6]">Total: {cards.length ? total : "—"}</p>
+                </div>
+                <div className="flex min-h-16 gap-2">
+                  {cards.length === 0 ? (
+                    <span className="text-xs text-[#BFAF91]">Waiting for deal...</span>
+                  ) : (
+                    cards.map((c, i) => (
+                      <motion.div
+                        key={c.id}
+                        initial={{ opacity: 0, y: -12, rotate: -6 }}
+                        animate={{ opacity: 1, y: 0, rotate: 0 }}
+                        transition={{ duration: 0.2, delay: i * 0.04 }}
+                        className="grid h-16 w-12 place-items-center rounded-md border border-[#C9A45C]/40 bg-[#F2E3C6] text-sm font-black text-[#15110F]"
+                      >
+                        <span>
+                          {c.rank}
+                          {c.suit}
+                        </span>
+                      </motion.div>
+                    ))
+                  )}
+                </div>
+              </div>
+            );
+          })}
+
+          <div className={`rounded-xl border p-3 text-center ${winner ? "border-[#C9A45C] bg-[#3A0B10]/25" : "border-[#2A1D19] bg-[#15110F]"}`}>
+            <p className="text-[10px] font-black uppercase tracking-widest text-[#BFAF91]">Round result</p>
+            <p className="mt-1 text-2xl font-black uppercase text-[#F2E3C6]">{winner ?? "—"}</p>
+          </div>
+        </div>
+      </section>
+
+      <aside className="rounded-2xl border border-[#2A1D19] bg-[#15110F] p-4">
+        <div className="rounded-xl border border-[#2A1D19] bg-[#0D0D0D] p-3">
+          <p className="text-[10px] font-black uppercase tracking-widest text-[#BFAF91]">Payouts</p>
+          <ul className="mt-2 space-y-1 text-xs font-mono text-[#BFAF91]">
+            <li>Player: 2x</li>
+            <li>Banker: 1.95x</li>
+            <li>Tie: 8x</li>
+          </ul>
+        </div>
+        <div className="mt-4 rounded-xl border border-[#2A1D19] bg-[#0D0D0D] p-3">
+          <h3 className="text-[10px] font-black uppercase tracking-widest text-[#BFAF91]">Recent rounds</h3>
+          {history.length === 0 ? (
+            <p className="mt-2 text-xs text-[#BFAF91]">No rounds yet.</p>
+          ) : (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {history.map((h, i) => (
+                <span
+                  key={`${h}-${i}`}
+                  className={`rounded-full border px-2 py-0.5 text-xs font-black ${
+                    h === "player" ? "border-[#7d1222] bg-[#3A0B10]/30 text-[#F2E3C6]" : h === "banker" ? "border-[#2A1D19] bg-[#15110F] text-[#F2E3C6]" : "border-[#C9A45C] bg-[#2d2410] text-[#C9A45C]"
+                  }`}
+                >
+                  {h === "player" ? "P" : h === "banker" ? "B" : "T"}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function LiveCasinoGame({
+  balance,
+  onResult,
+  onNotify,
+}: {
+  balance: number;
+  onResult: (delta: number) => void;
+  onNotify: (msg: string, type?: NotificationType, duration?: number, priority?: NotificationPriority) => void;
+}) {
+  const [betAmount, setBetAmount] = useState(20);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playerCard, setPlayerCard] = useState<number | null>(null);
+  const [dealerCard, setDealerCard] = useState<number | null>(null);
+
+  const deal = () => {
+    if (isPlaying) return;
+    const wager = Math.floor(betAmount);
+    if (wager <= 0) return onNotify("Enter a valid bet amount", "error");
+    if (wager > balance) return onNotify("Insufficient balance", "error");
+
+    onResult(-wager);
+    setIsPlaying(true);
+    setPlayerCard(null);
+    setDealerCard(null);
+
+    const p = 1 + Math.floor(Math.random() * 13);
+    const d = 1 + Math.floor(Math.random() * 13);
+    window.setTimeout(() => setPlayerCard(p), 260);
+    window.setTimeout(() => setDealerCard(d), 620);
+    window.setTimeout(() => {
+      if (p > d) {
+        onResult(wager * 2);
+        onNotify(`Player wins +${wager} DBAK`, "success");
+      } else if (p === d) {
+        onResult(wager);
+        onNotify("Push", "info");
+      } else {
+        onNotify("Dealer wins", "error");
+      }
+      setIsPlaying(false);
+    }, 900);
+  };
+
+  return (
+    <div className="grid gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
+      <aside className="rounded-2xl border border-[#2A1D19] bg-[#15110F] p-4">
+        <p className="text-[10px] font-black uppercase tracking-widest text-[#BFAF91]">Live table wager</p>
+        <input
+          type="number"
+          min={1}
+          max={Math.max(1, Math.floor(balance))}
+          value={betAmount}
+          onChange={(e) => setBetAmount(Math.max(1, Math.floor(Number(e.target.value) || 0)))}
+          disabled={isPlaying}
+          className="mt-2 w-full rounded-lg border border-[#2A1D19] bg-[#050505] px-3 py-2 font-mono text-base text-[#F2E3C6] focus:border-[#B11226] focus:outline-none"
+        />
+        <Button className="mt-3 w-full" onClick={deal} disabled={isPlaying}>
+          {isPlaying ? "DEALING..." : "DEAL LIVE HAND"}
+        </Button>
+      </aside>
+      <section className="rounded-2xl border border-[#2A1D19] bg-[#15110F] p-4">
+        <div className="grid min-h-[320px] place-items-center rounded-2xl border border-[#2A1D19] bg-[#0D0D0D] p-6">
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="rounded-xl border border-[#2A1D19] bg-[#15110F] p-4 text-center">
+              <p className="text-xs font-black uppercase text-[#BFAF91]">Player card</p>
+              <p className="mt-2 text-5xl font-black text-[#F2E3C6]">{playerCard ?? "?"}</p>
+            </div>
+            <div className="rounded-xl border border-[#2A1D19] bg-[#15110F] p-4 text-center">
+              <p className="text-xs font-black uppercase text-[#BFAF91]">Dealer card</p>
+              <p className="mt-2 text-5xl font-black text-[#F2E3C6]">{dealerCard ?? "?"}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function GameShowsGame({
+  balance,
+  onResult,
+  onNotify,
+}: {
+  balance: number;
+  onResult: (delta: number) => void;
+  onNotify: (msg: string, type?: NotificationType, duration?: number, priority?: NotificationPriority) => void;
+}) {
+  const [betAmount, setBetAmount] = useState(15);
+  const [pick, setPick] = useState<number | null>(null);
+  const [winningDoor, setWinningDoor] = useState<number | null>(null);
+  const [isSpinning, setIsSpinning] = useState(false);
+
+  const play = () => {
+    if (isSpinning) return;
+    if (pick == null) return onNotify("Pick a door first", "error");
+    const wager = Math.floor(betAmount);
+    if (wager <= 0) return onNotify("Enter a valid bet amount", "error");
+    if (wager > balance) return onNotify("Insufficient balance", "error");
+    onResult(-wager);
+    setIsSpinning(true);
+    setWinningDoor(null);
+    const winDoor = 1 + Math.floor(Math.random() * 3);
+    window.setTimeout(() => {
+      setWinningDoor(winDoor);
+      if (winDoor === pick) {
+        onResult(wager * 3);
+        onNotify(`Door ${pick} wins! +${wager * 2} DBAK`, "success", 1500, "normal");
+      } else {
+        onNotify(`Winning door was ${winDoor}`, "error", 1200, "normal");
+      }
+      setIsSpinning(false);
+    }, 850);
+  };
+
+  return (
+    <div className="grid gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
+      <aside className="rounded-2xl border border-[#2A1D19] bg-[#15110F] p-4">
+        <p className="text-[10px] font-black uppercase tracking-widest text-[#BFAF91]">Bet amount</p>
+        <input
+          type="number"
+          min={1}
+          max={Math.max(1, Math.floor(balance))}
+          value={betAmount}
+          onChange={(e) => setBetAmount(Math.max(1, Math.floor(Number(e.target.value) || 0)))}
+          disabled={isSpinning}
+          className="mt-2 w-full rounded-lg border border-[#2A1D19] bg-[#050505] px-3 py-2 font-mono text-base text-[#F2E3C6] focus:border-[#B11226] focus:outline-none"
+        />
+        <Button className="mt-3 w-full" onClick={play} disabled={isSpinning}>
+          {isSpinning ? "REVEALING..." : "PLAY SHOW"}
+        </Button>
+      </aside>
+      <section className="rounded-2xl border border-[#2A1D19] bg-[#15110F] p-4">
+        <div className="grid min-h-[320px] place-items-center rounded-2xl border border-[#2A1D19] bg-[#0D0D0D] p-6">
+          <div className="grid w-full max-w-xl grid-cols-3 gap-3">
+            {[1, 2, 3].map((door) => {
+              const picked = pick === door;
+              const won = winningDoor === door;
+              return (
+                <button
+                  key={door}
+                  type="button"
+                  disabled={isSpinning}
+                  onClick={() => setPick(door)}
+                  className={`h-32 rounded-xl border text-sm font-black transition ${
+                    won
+                      ? "border-[#C9A45C] bg-[#3A0B10]/30 text-[#F2E3C6]"
+                      : picked
+                        ? "border-[#B11226] bg-[#15110F] text-[#F2E3C6]"
+                        : "border-[#2A1D19] bg-[#15110F] text-[#BFAF91] hover:border-[#B11226]"
+                  }`}
+                >
+                  DOOR {door}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 const ROULETTE_RED_NUMBERS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
-const ROULETTE_WHEEL_ORDER = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26] as const;
+const EUROPEAN_WHEEL_ORDER = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26] as const;
 
 function getNumberColor(num: number): RouletteNumberColor {
   if (num === 0) return "green";
@@ -1826,10 +2610,9 @@ function RouletteGame({
   const [bets, setBets] = useState<RouletteBet[]>([]);
   const [lastBets, setLastBets] = useState<RouletteBet[]>([]);
   const [isSpinning, setIsSpinning] = useState(false);
-  const [resultNumber, setResultNumber] = useState<number | null>(null);
+  const [winningNumber, setWinningNumber] = useState<number | null>(null);
   const [lastSpin, setLastSpin] = useState<RouletteLastSpin | null>(null);
   const [wheelRotation, setWheelRotation] = useState(0);
-  const [ballRotation, setBallRotation] = useState(0);
   const [spinRows, setSpinRows] = useState<RouletteSpinRow[]>([]);
   const [recentNumbers, setRecentNumbers] = useState<number[]>([]);
   const hasSettledRef = useRef(false);
@@ -1921,21 +2704,31 @@ function RouletteGame({
     const snapshot = bets.map((b) => ({ ...b }));
     const spinTotalBet = totalBet;
     const rolled = Math.floor(Math.random() * 37);
-    const wheelIndex = ROULETTE_WHEEL_ORDER.indexOf(rolled as (typeof ROULETTE_WHEEL_ORDER)[number]);
-    const anglePer = 360 / ROULETTE_WHEEL_ORDER.length;
-    const target = wheelIndex >= 0 ? wheelIndex * anglePer : 0;
+    setWinningNumber(rolled);
 
     onResult(-spinTotalBet);
-    setResultNumber(null);
     setIsSpinning(true);
-    setWheelRotation((prev) => prev + 1440 + target);
-    setBallRotation((prev) => prev - 2160 - target * 1.6);
+    setWheelRotation((prev) => prev + 540);
 
     window.setTimeout(() => {
       const rolledColor = getNumberColor(rolled);
-      setResultNumber(rolled);
       settleSpin(rolled, rolledColor, snapshot, spinTotalBet);
       setIsSpinning(false);
+      setWheelRotation(0);
+
+      const resultIndex = EUROPEAN_WHEEL_ORDER.indexOf(rolled as (typeof EUROPEAN_WHEEL_ORDER)[number]);
+      const safeResultIndex = resultIndex === -1 ? 0 : resultIndex;
+      if (resultIndex === -1) {
+        console.error("Roulette winningNumber was not found in wheel order", { winningNumber: rolled });
+      }
+      const segmentAngle = 360 / EUROPEAN_WHEEL_ORDER.length;
+      const ballAngle = safeResultIndex * segmentAngle;
+      console.log({
+        winningNumber: rolled,
+        resultIndex: safeResultIndex,
+        ballAngle,
+        pocketNumberAtIndex: EUROPEAN_WHEEL_ORDER[safeResultIndex],
+      });
     }, 3600);
   };
 
@@ -1949,7 +2742,11 @@ function RouletteGame({
   }, []);
 
   const getCellBet = (id: string) => bets.find((b) => b.id === id)?.amount ?? 0;
-  const resultColor = resultNumber == null ? null : getNumberColor(resultNumber);
+  const resultColor = winningNumber == null ? null : getNumberColor(winningNumber);
+  const segmentAngle = 360 / EUROPEAN_WHEEL_ORDER.length;
+  const resultIndex = winningNumber == null ? -1 : EUROPEAN_WHEEL_ORDER.indexOf(winningNumber as (typeof EUROPEAN_WHEEL_ORDER)[number]);
+  const safeResultIndex = resultIndex === -1 ? 0 : resultIndex;
+  const ballAngle = safeResultIndex * segmentAngle;
   const pocketRadius = wheelSize * 0.4;
   const ballRadius = wheelSize * 0.45;
 
@@ -1964,6 +2761,12 @@ function RouletteGame({
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
+
+  useEffect(() => {
+    if (winningNumber != null && resultIndex === -1) {
+      console.error("Roulette result index fallback to 0", { winningNumber });
+    }
+  }, [winningNumber, resultIndex]);
 
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-[320px_minmax(0,1fr)_320px] lg:gap-6">
@@ -2048,16 +2851,17 @@ function RouletteGame({
               <div className="absolute inset-[7%] rounded-full border-[10px] border-[#B11226] bg-gradient-to-br from-[#0d0a09] via-[#191210] to-[#050505]" />
               <div className="absolute inset-[16%] rounded-full border border-[#C9A45C]/20 bg-[#090808]" />
 
-              {/* Layer B: rotating pocket ring */}
+              {/* Layer B: wheel pockets (European order) */}
               <motion.div
-                animate={{ rotate: wheelRotation }}
-                transition={{ duration: 3.6, ease: [0.1, 0.75, 0.2, 1] }}
+                animate={{ rotate: isSpinning ? wheelRotation : 0 }}
+                transition={{ duration: isSpinning ? 3.6 : 0.35, ease: [0.1, 0.75, 0.2, 1] }}
                 className="absolute inset-0"
               >
-                {ROULETTE_WHEEL_ORDER.map((n, i) => {
-                  const angle = (i / ROULETTE_WHEEL_ORDER.length) * 360;
+                {EUROPEAN_WHEEL_ORDER.map((n, i) => {
+                  const angle = (i / EUROPEAN_WHEEL_ORDER.length) * 360;
                   const clr = getNumberColor(n);
                   const pocket = clr === "red" ? "bg-[#7d1222]" : clr === "black" ? "bg-[#111111]" : "bg-[#2d5a2d]";
+                  const isWinningPocket = winningNumber != null && n === winningNumber;
                   return (
                     <div
                       key={n}
@@ -2067,7 +2871,13 @@ function RouletteGame({
                         transformOrigin: "center center",
                       }}
                     >
-                      <div className={`grid h-[28px] w-[18px] place-items-center rounded-[5px] border border-[rgba(242,227,198,0.15)] shadow-[0_0_6px_rgba(0,0,0,0.28)] ${pocket}`}>
+                      <div
+                        className={`grid h-[28px] w-[18px] place-items-center rounded-[5px] border shadow-[0_0_6px_rgba(0,0,0,0.28)] ${pocket} ${
+                          isWinningPocket
+                            ? "border-[#C9A45C] shadow-[0_0_14px_rgba(201,164,92,0.9)]"
+                            : "border-[rgba(242,227,198,0.15)]"
+                        }`}
+                      >
                         <span className="text-[7px] font-black leading-none text-[#F2E3C6]">{n}</span>
                       </div>
                     </div>
@@ -2075,24 +2885,20 @@ function RouletteGame({
                 })}
               </motion.div>
 
-              {/* Layer C: ball ring rotating opposite */}
-              <motion.div
-                animate={{ rotate: ballRotation }}
-                transition={{ duration: 3.6, ease: [0.1, 0.75, 0.2, 1] }}
-                className="absolute inset-0 rounded-full"
-              >
+              {/* Layer C: ball locked to winning pocket */}
+              <div className="absolute inset-0 rounded-full">
                 <div
                   className="absolute left-1/2 top-1/2 h-[12px] w-[12px] rounded-full bg-[#F2E3C6] shadow-[0_0_14px_rgba(242,227,198,0.75)]"
-                  style={{ transform: `translate(-50%, -50%) rotate(0deg) translateY(-${ballRadius}px)` }}
+                  style={{ transform: `rotate(${ballAngle}deg) translateY(-${ballRadius}px) translate(-50%, -50%)` }}
                 />
-              </motion.div>
+              </div>
 
               {/* Layer D: center hub */}
               <div className="absolute left-1/2 top-1/2 grid h-[24%] w-[24%] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-[#C9A45C]/50 bg-[#0D0D0D]">
                 <div className="text-center">
                   <p className="text-[9px] font-black uppercase tracking-widest text-[#BFAF91]">Result</p>
                   <p className={`text-3xl font-black ${resultColor === "red" ? "text-[#E21B35]" : resultColor === "black" ? "text-[#F2E3C6]" : "text-[#C9A45C]"}`}>
-                    {resultNumber ?? "—"}
+                    {winningNumber ?? "—"}
                   </p>
                 </div>
               </div>
@@ -3632,10 +4438,10 @@ function Homepage({ onPlay }: { onPlay: (view: string) => void }) {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
             <Badge variant="red">NOW ENTERING THE HOUSE</Badge>
             <h2 className="text-6xl md:text-8xl font-black text-[#F2E3C6] tracking-tighter mt-6 mb-8 uppercase italic font-display">
-              Cinematic <span className="text-[#B11226]">Demo</span> <br /> Gaming.
+              WELCOME TO HOUSE OF BET
             </h2>
             <p className="text-[#BFAF91] text-lg max-w-2xl mx-auto mb-12 uppercase tracking-wide font-medium">
-              Explore a premium portfolio simulation of high-voltage casino architecture. No real money. Pure visual excellence.
+              A next-generation betting and casino platform built for speed, strategy, and high-stakes entertainment. Enter a world of live odds, instant games, and premium play.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Button size="lg" onClick={() => onPlay("casino")} className="w-full sm:w-auto">
@@ -3760,6 +4566,7 @@ export function MadbakHouseApp() {
   const user = useCurrentUser();
   const adjustBalance = useAuthStore((s) => s.adjustBalance);
   const logout = useAuthStore((s) => s.logout);
+  const initializeAuth = useAuthStore((s) => s.initializeAuth);
 
   const [view, setView] = useState("home");
   const [sportsMatchFocusId, setSportsMatchFocusId] = useState<string | null>(null);
@@ -3848,18 +4655,19 @@ export function MadbakHouseApp() {
       setAuthTab("login");
       setAuthMountKey((k) => k + 1);
       setAuthOpen(true);
-      addNotification("Sign in to continue.", "info", 1200, "normal");
+      addNotification("Login required", "info", 1200, "normal");
       return;
     }
     setView(v);
   };
 
   useEffect(() => {
+    void initializeAuth();
     return useAuthStore.persist.onFinishHydration(() => {
-      useAuthStore.getState().ensureSeedAdmin();
+      void initializeAuth();
       useAuthStore.getState().setHasHydrated(true);
     });
-  }, []);
+  }, [initializeAuth]);
 
   useEffect(() => {
     const timers = toastTimersRef.current;
@@ -4003,59 +4811,123 @@ export function MadbakHouseApp() {
           </div>
         );
       case "game-jackpot-slots":
+        return (
+          <div className="container mx-auto max-w-7xl px-4 pb-8 pt-8 md:px-8">
+            <div className="mb-8 flex flex-wrap items-center gap-4">
+              <button type="button" onClick={() => setView("casino")} className="text-[#BFAF91] transition-colors hover:text-white">
+                <LayoutGrid size={24} />
+              </button>
+              <h1 className="font-display text-3xl font-black uppercase italic text-white">Jackpot Slots</h1>
+              <Badge variant="red">High variance mode</Badge>
+            </div>
+            <SlotsGame
+              balance={balance}
+              onResult={handleGameResult}
+              onNotify={(msg, type = "success", duration = 1200, priority = "normal") => addNotification(msg, type, duration, priority)}
+            />
+          </div>
+        );
       case "game-classic-slots":
         return (
-          <DemoGamePlaceholder
-            title={view === "game-jackpot-slots" ? "Jackpot Slots" : "Classic Slots"}
-            slug={view}
-            onBackToCasino={() => setView("casino")}
-            onRequestBuild={() => addNotification(`Request logged — ${view} (demo)`, "info")}
-          />
+          <div className="container mx-auto max-w-7xl px-4 pb-8 pt-8 md:px-8">
+            <div className="mb-8 flex flex-wrap items-center gap-4">
+              <button type="button" onClick={() => setView("casino")} className="text-[#BFAF91] transition-colors hover:text-white">
+                <LayoutGrid size={24} />
+              </button>
+              <h1 className="font-display text-3xl font-black uppercase italic text-white">Classic Slots</h1>
+              <Badge variant="red">Retro mode</Badge>
+            </div>
+            <SlotsGame
+              balance={balance}
+              onResult={handleGameResult}
+              onNotify={(msg, type = "success", duration = 1200, priority = "normal") => addNotification(msg, type, duration, priority)}
+            />
+          </div>
         );
       case "game-coinflip":
         return (
-          <DemoGamePlaceholder
-            title="Coinflip"
-            slug="game-coinflip"
-            onBackToCasino={() => setView("casino")}
-            onRequestBuild={() => addNotification("Request logged — Coinflip (demo)", "info")}
-          />
+          <div className="container mx-auto max-w-7xl px-4 pb-8 pt-8 md:px-8">
+            <div className="mb-8 flex flex-wrap items-center gap-4">
+              <button type="button" onClick={() => setView("casino")} className="text-[#BFAF91] transition-colors hover:text-white">
+                <LayoutGrid size={24} />
+              </button>
+              <h1 className="font-display text-3xl font-black uppercase italic text-white">Coinflip</h1>
+              <Badge variant="red">Heads / Tails</Badge>
+            </div>
+            <CoinflipGame
+              balance={balance}
+              onResult={handleGameResult}
+              onNotify={(msg, type = "success", duration = 1200, priority = "normal") => addNotification(msg, type, duration, priority)}
+            />
+          </div>
         );
       case "game-keno":
         return (
-          <DemoGamePlaceholder
-            title="Keno"
-            slug="game-keno"
-            onBackToCasino={() => setView("casino")}
-            onRequestBuild={() => addNotification("Request logged — Keno (demo)", "info")}
-          />
+          <div className="container mx-auto max-w-7xl px-4 pb-8 pt-8 md:px-8">
+            <div className="mb-8 flex flex-wrap items-center gap-4">
+              <button type="button" onClick={() => setView("casino")} className="text-[#BFAF91] transition-colors hover:text-white">
+                <LayoutGrid size={24} />
+              </button>
+              <h1 className="font-display text-3xl font-black uppercase italic text-white">Keno</h1>
+              <Badge variant="red">1 to 40 · pick up to 10</Badge>
+            </div>
+            <KenoGame
+              balance={balance}
+              onResult={handleGameResult}
+              onNotify={(msg, type = "success", duration = 1200, priority = "normal") => addNotification(msg, type, duration, priority)}
+            />
+          </div>
         );
       case "game-baccarat":
         return (
-          <DemoGamePlaceholder
-            title="Baccarat"
-            slug="game-baccarat"
-            onBackToCasino={() => setView("casino")}
-            onRequestBuild={() => addNotification("Request logged — Baccarat (demo)", "info")}
-          />
+          <div className="container mx-auto max-w-7xl px-4 pb-8 pt-8 md:px-8">
+            <div className="mb-8 flex flex-wrap items-center gap-4">
+              <button type="button" onClick={() => setView("casino")} className="text-[#BFAF91] transition-colors hover:text-white">
+                <LayoutGrid size={24} />
+              </button>
+              <h1 className="font-display text-3xl font-black uppercase italic text-white">Baccarat</h1>
+              <Badge variant="red">Player · Banker · Tie</Badge>
+            </div>
+            <BaccaratGame
+              balance={balance}
+              onResult={handleGameResult}
+              onNotify={(msg, type = "success", duration = 1200, priority = "normal") => addNotification(msg, type, duration, priority)}
+            />
+          </div>
         );
       case "live-casino":
         return (
-          <DemoGamePlaceholder
-            title="Live Casino"
-            slug="live-casino"
-            onBackToCasino={() => setView("casino")}
-            onRequestBuild={() => addNotification("Request logged — Live Casino (demo)", "info")}
-          />
+          <div className="container mx-auto max-w-7xl px-4 pb-8 pt-8 md:px-8">
+            <div className="mb-8 flex flex-wrap items-center gap-4">
+              <button type="button" onClick={() => setView("casino")} className="text-[#BFAF91] transition-colors hover:text-white">
+                <LayoutGrid size={24} />
+              </button>
+              <h1 className="font-display text-3xl font-black uppercase italic text-white">Live Casino</h1>
+              <Badge variant="red">Dealer duel</Badge>
+            </div>
+            <LiveCasinoGame
+              balance={balance}
+              onResult={handleGameResult}
+              onNotify={(msg, type = "success", duration = 1200, priority = "normal") => addNotification(msg, type, duration, priority)}
+            />
+          </div>
         );
       case "game-shows":
         return (
-          <DemoGamePlaceholder
-            title="Game Shows"
-            slug="game-shows"
-            onBackToCasino={() => setView("casino")}
-            onRequestBuild={() => addNotification("Request logged — Game Shows (demo)", "info")}
-          />
+          <div className="container mx-auto max-w-7xl px-4 pb-8 pt-8 md:px-8">
+            <div className="mb-8 flex flex-wrap items-center gap-4">
+              <button type="button" onClick={() => setView("casino")} className="text-[#BFAF91] transition-colors hover:text-white">
+                <LayoutGrid size={24} />
+              </button>
+              <h1 className="font-display text-3xl font-black uppercase italic text-white">Game Shows</h1>
+              <Badge variant="red">Pick a door</Badge>
+            </div>
+            <GameShowsGame
+              balance={balance}
+              onResult={handleGameResult}
+              onNotify={(msg, type = "success", duration = 1200, priority = "normal") => addNotification(msg, type, duration, priority)}
+            />
+          </div>
         );
       case "terms":
         return (
@@ -4273,21 +5145,28 @@ export function MadbakHouseApp() {
         );
       default:
         if (view.startsWith("game-")) {
-          const slug = view.slice(5);
           return (
-            <DemoGamePlaceholder
-              title={slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-              slug={view}
-              onBackToCasino={() => setView("casino")}
-              onRequestBuild={() => addNotification(`Request logged — ${slug} (demo)`, "info")}
-            />
+            <div className="container mx-auto max-w-7xl px-4 pb-8 pt-8 md:px-8">
+              <div className="mb-8 flex flex-wrap items-center gap-4">
+                <button type="button" onClick={() => setView("casino")} className="text-[#BFAF91] transition-colors hover:text-white">
+                  <LayoutGrid size={24} />
+                </button>
+                <h1 className="font-display text-3xl font-black uppercase italic text-white">Arcade Fallback</h1>
+                <Badge variant="red">Playable mode</Badge>
+              </div>
+              <CoinflipGame
+                balance={balance}
+                onResult={handleGameResult}
+                onNotify={(msg, type = "success", duration = 1200, priority = "normal") => addNotification(msg, type, duration, priority)}
+              />
+            </div>
           );
         }
         return (
           <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 text-center">
             <AlertTriangle size={64} className="mb-4 text-[#B11226]" />
-            <h2 className="font-display text-4xl font-black uppercase italic text-white">Coming Soon</h2>
-            <p className="mb-8 mt-2 text-[#BFAF91]">This module is currently in production for the Madbak portfolio.</p>
+            <h2 className="font-display text-4xl font-black uppercase italic text-white">Unknown view</h2>
+            <p className="mb-8 mt-2 text-[#BFAF91]">Route not found. Return to lobby.</p>
             <Button onClick={() => setView("home")}>Back to Lobby</Button>
           </div>
         );
@@ -4304,7 +5183,7 @@ export function MadbakHouseApp() {
         onOpenAuth={requestAuth}
         onSportsMatchFocus={setSportsMatchFocusId}
         onLogout={() => {
-          logout();
+          void logout();
           setView("home");
         }}
       />

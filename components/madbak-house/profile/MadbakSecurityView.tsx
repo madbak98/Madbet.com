@@ -18,7 +18,7 @@ export function MadbakSecurityView({ user, onNotify }: { user: MadbakUser; onNot
 
   const strength = evaluatePasswordStrength(nw);
 
-  const submitPw = (e: React.FormEvent) => {
+  const submitPw = async (e: React.FormEvent) => {
     e.preventDefault();
     setPwErr(null);
     if (nw !== nw2) {
@@ -29,7 +29,7 @@ export function MadbakSecurityView({ user, onNotify }: { user: MadbakUser; onNot
       setPwErr("New password must meet policy (8+ chars, upper, lower, number).");
       return;
     }
-    const r = changePasswordDemo(cur, nw);
+    const r = await changePasswordDemo(cur, nw);
     if (!r.ok) {
       setPwErr(r.error);
       return;
@@ -37,20 +37,18 @@ export function MadbakSecurityView({ user, onNotify }: { user: MadbakUser; onNot
     setCur("");
     setNw("");
     setNw2("");
-    onNotify("Password updated (demo hash only).", "success");
+    onNotify("Password updated.", "success");
   };
 
   return (
     <div className="mx-auto max-w-3xl space-y-8 px-4 pb-16 md:px-8">
       <div>
         <h1 className="font-display text-4xl font-black uppercase italic text-white">Security</h1>
-        <p className="mt-2 text-xs text-[#BFAF91]">
-          Demo controls only. Production would use server-side bcrypt/argon2, WebAuthn or TOTP, and device management APIs.
-        </p>
+        <p className="mt-2 text-xs text-[#BFAF91]">Manage your account security settings.</p>
       </div>
 
       <form onSubmit={submitPw} className="space-y-4 rounded-2xl border border-[#2A1D19] bg-[#15110F] p-6">
-        <h2 className="text-sm font-black uppercase tracking-widest text-[#C9A45C]">Change password (demo)</h2>
+        <h2 className="text-sm font-black uppercase tracking-widest text-[#C9A45C]">Change password</h2>
         <label className="block text-[10px] font-black uppercase text-[#BFAF91]">
           Current password
           <input

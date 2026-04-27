@@ -4,28 +4,11 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import type { AuthModalTab } from "@/lib/auth/types";
-import { DEMO_APPLE_EMAIL, DEMO_GOOGLE_EMAIL } from "@/lib/auth/types";
 import { DEMO_COUNTRIES } from "@/lib/auth/validators";
 import { isValidEmail, isAtLeast18 } from "@/lib/auth/validators";
 import { evaluatePasswordStrength, passwordMeetsPolicy } from "@/lib/auth/password-mock";
 import { useAuthStore } from "@/store/useAuthStore";
 import { PasswordStrengthMeter } from "./PasswordStrengthMeter";
-
-type Step = "auth" | "verify-email";
-
-function initialAuthStep(): Step {
-  const sid = useAuthStore.getState().sessionUserId;
-  const u = sid ? useAuthStore.getState().getUser(sid) : undefined;
-  if (u && !u.emailVerified) return "verify-email";
-  return "auth";
-}
-
-function initialVerifyUserId(): string | null {
-  const sid = useAuthStore.getState().sessionUserId;
-  const u = sid ? useAuthStore.getState().getUser(sid) : undefined;
-  if (u && !u.emailVerified) return sid;
-  return null;
-}
 
 export function AuthModal({
   open,
@@ -37,21 +20,13 @@ export function AuthModal({
   initialTab?: AuthModalTab;
 }) {
   const [tab, setTab] = useState<AuthModalTab>(initialTab);
-  const [step, setStep] = useState<Step>(initialAuthStep);
-  const [verifyUserId, setVerifyUserId] = useState<string | null>(initialVerifyUserId);
-  const [codeInput, setCodeInput] = useState("");
-
   const signUp = useAuthStore((s) => s.signUp);
   const login = useAuthStore((s) => s.login);
-  const demoSocialAuth = useAuthStore((s) => s.demoSocialAuth);
-  const confirmEmailCode = useAuthStore((s) => s.confirmEmailCode);
-  const resendEmailCode = useAuthStore((s) => s.resendEmailCode);
-  const emailCodes = useAuthStore((s) => s.emailCodes);
-  const sessionUserId = useAuthStore((s) => s.sessionUserId);
+  const signInWithOAuth = useAuthStore((s) => s.signInWithOAuth);
+  const forgotPassword = useAuthStore((s) => s.forgotPassword);
 
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
-  const [remember, setRemember] = useState(true);
 
   const [suUser, setSuUser] = useState("");
   const [suEmail, setSuEmail] = useState("");
@@ -63,58 +38,34 @@ export function AuthModal({
   const [suAge, setSuAge] = useState(false);
 
   const [err, setErr] = useState<string | null>(null);
-  /** Local demo only — real Google / Apple use hosted OAuth (NextAuth, Clerk, Supabase, Firebase). Never DIY OAuth in production. */
-  const [oauthFlow, setOauthFlow] = useState<null | "google" | "apple">(null);
-  const [oauthAgeOk, setOauthAgeOk] = useState(false);
+  const [okMsg, setOkMsg] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
 
   const strength = evaluatePasswordStrength(suPass);
 
-  const closeOAuth = () => {
-    setOauthFlow(null);
-    setOauthAgeOk(false);
-    setErr(null);
-  };
-
-  const confirmDemoOAuth = () => {
-    if (!oauthFlow) return;
-    if (!oauthAgeOk) {
-      setErr("Confirm you are 18+ and accept the Terms to continue.");
-      return;
-    }
-    const r = demoSocialAuth(oauthFlow);
-    if (!r.ok) {
-      setErr(r.error);
-      return;
-    }
-    closeOAuth();
-    onClose();
-  };
-
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErr(null);
+    setOkMsg(null);
     if (!isValidEmail(loginEmail)) {
       setErr("Enter a valid email.");
       return;
     }
-    const r = login(loginEmail, loginPassword, remember);
+    setBusy(true);
+    const r = await login(loginEmail, loginPassword);
+    setBusy(false);
     if (!r.ok) {
       setErr(r.error);
-      return;
-    }
-    const sid = useAuthStore.getState().sessionUserId;
-    const u = sid ? useAuthStore.getState().getUser(sid) : undefined;
-    if (u && !u.emailVerified) {
-      setVerifyUserId(u.id);
-      setStep("verify-email");
       return;
     }
     onClose();
   };
 
-  const handleSignup = (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setErr(null);
+    setOkMsg(null);
     if (!suTerms) {
       setErr("You must accept the terms.");
       return;
@@ -135,39 +86,40 @@ export function AuthModal({
       setErr("Password must be 8+ chars with upper, lower, and a number.");
       return;
     }
-    const r = signUp({
+    setBusy(true);
+    const r = await signUp({
       username: suUser,
       email: suEmail,
       password: suPass,
       dateOfBirth: suDob,
       country: suCountry,
     });
+    setBusy(false);
     if (!r.ok) {
       setErr(r.error);
       return;
     }
-    setVerifyUserId(r.userId);
-    setStep("verify-email");
-    setCodeInput("");
+    setOkMsg(r.message ?? "Check your email to verify account.");
+    setTab("login");
   };
 
-  const handleVerify = (e: React.FormEvent) => {
+  const handleForgot = async (e: React.FormEvent) => {
     e.preventDefault();
     setErr(null);
-    const uid = verifyUserId ?? sessionUserId;
-    if (!uid) {
-      setErr("Session missing. Try signing in again.");
+    setOkMsg(null);
+    if (!isValidEmail(forgotEmail)) {
+      setErr("Enter a valid email.");
       return;
     }
-    const r = confirmEmailCode(uid, codeInput.trim());
+    setBusy(true);
+    const r = await forgotPassword(forgotEmail);
+    setBusy(false);
     if (!r.ok) {
       setErr(r.error);
       return;
     }
-    onClose();
+    setOkMsg("If this email exists, a reset link has been sent.");
   };
-
-  const demoCode = verifyUserId ? emailCodes[verifyUserId] : sessionUserId ? emailCodes[sessionUserId] : undefined;
 
   return (
     <AnimatePresence>
@@ -178,8 +130,7 @@ export function AuthModal({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={() => {
-          if (oauthFlow) closeOAuth();
-          else onClose();
+          onClose();
         }}
       >
         <motion.div
@@ -196,8 +147,7 @@ export function AuthModal({
           <button
             type="button"
             onClick={() => {
-              if (oauthFlow) closeOAuth();
-              else onClose();
+              onClose();
             }}
             className="absolute right-3 top-3 z-[5] rounded-lg p-2 text-[#BFAF91] hover:bg-white/5 hover:text-[#F2E3C6]"
             aria-label="Close"
@@ -206,51 +156,7 @@ export function AuthModal({
           </button>
 
           <div className="p-6 pt-10">
-            {step === "verify-email" ? (
-              <div className="space-y-4">
-                <h2 id="auth-modal-title" className="font-display text-2xl font-black uppercase italic text-[#F2E3C6]">
-                  Verify email
-                </h2>
-                <p className="text-xs text-[#BFAF91] leading-relaxed">
-                  Demo only: no real email is sent. In production this step would use a licensed email provider and server-
-                  side verification. Enter the 6-digit code stored locally for this session.
-                </p>
-                {demoCode && (
-                  <p className="rounded-lg border border-[#B11226]/40 bg-[#3A0B10]/30 px-3 py-2 text-[11px] font-mono text-[#F2E3C6]">
-                    Demo code: <span className="text-[#C9A45C] font-black tracking-widest">{demoCode}</span>
-                  </p>
-                )}
-                <form onSubmit={handleVerify} className="space-y-3">
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-[#BFAF91]">6-digit code</label>
-                  <input
-                    value={codeInput}
-                    onChange={(e) => setCodeInput(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                    className="w-full rounded-xl border border-[#2A1D19] bg-[#050505] px-4 py-3 font-mono text-lg tracking-[0.4em] text-[#F2E3C6] focus:border-[#B11226] focus:outline-none"
-                    placeholder="000000"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                  />
-                  {err && <p className="text-[11px] font-bold text-[#E21B35]">{err}</p>}
-                  <button
-                    type="submit"
-                    className="w-full rounded-xl bg-[#B11226] py-3 text-sm font-black uppercase tracking-wider text-[#F2E3C6] hover:bg-[#E21B35]"
-                  >
-                    Confirm
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const uid = verifyUserId ?? sessionUserId;
-                      if (uid) resendEmailCode(uid);
-                    }}
-                    className="w-full text-[11px] font-bold uppercase tracking-widest text-[#BFAF91] hover:text-[#C9A45C]"
-                  >
-                    Resend demo code
-                  </button>
-                </form>
-              </div>
-            ) : (
-              <>
+            <>
                 <h2 id="auth-modal-title" className="font-display text-2xl font-black uppercase italic text-[#F2E3C6] mb-6">
                   {tab === "login" && "Welcome back"}
                   {tab === "signup" && "Join the house"}
@@ -265,7 +171,7 @@ export function AuthModal({
                       onClick={() => {
                         setTab(t);
                         setErr(null);
-                        closeOAuth();
+                        setOkMsg(null);
                       }}
                       className={`flex-1 rounded-md py-2 text-[10px] font-black uppercase tracking-widest ${
                         tab === t ? "bg-[#B11226] text-[#F2E3C6]" : "text-[#BFAF91] hover:text-[#F2E3C6]"
@@ -279,7 +185,7 @@ export function AuthModal({
                     onClick={() => {
                       setTab("forgot");
                       setErr(null);
-                      closeOAuth();
+                      setOkMsg(null);
                     }}
                     className={`rounded-md px-2 py-2 text-[10px] font-black uppercase tracking-widest ${
                       tab === "forgot" ? "bg-[#B11226] text-[#F2E3C6]" : "text-[#BFAF91]"
@@ -290,19 +196,28 @@ export function AuthModal({
                 </div>
 
                 {tab === "forgot" && (
-                  <div className="space-y-4 text-sm text-[#BFAF91]">
-                    <p>
-                      This build has no real password reset. In production, password recovery would run on a secure API with
-                      rate limiting and email magic links.
-                    </p>
+                  <form onSubmit={handleForgot} className="space-y-4">
+                    <div>
+                      <label className="text-[10px] font-black uppercase text-[#BFAF91]">Email</label>
+                      <input
+                        type="email"
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                        className="mt-1 w-full rounded-xl border border-[#2A1D19] bg-[#050505] px-4 py-2.5 text-sm text-[#F2E3C6] focus:border-[#B11226] focus:outline-none"
+                        autoComplete="email"
+                      />
+                    </div>
                     <button
-                      type="button"
-                      onClick={() => setTab("login")}
-                      className="text-[#C9A45C] font-bold uppercase text-xs tracking-widest hover:underline"
+                      type="submit"
+                      disabled={busy}
+                      className="w-full rounded-xl bg-[#B11226] py-3 text-sm font-black uppercase tracking-wider text-[#F2E3C6] hover:bg-[#E21B35] disabled:opacity-60"
                     >
+                      Send reset link
+                    </button>
+                    <button type="button" onClick={() => setTab("login")} className="text-[#C9A45C] font-bold uppercase text-xs tracking-widest hover:underline">
                       Back to login
                     </button>
-                  </div>
+                  </form>
                 )}
 
                 {tab === "login" && (
@@ -327,13 +242,14 @@ export function AuthModal({
                         autoComplete="current-password"
                       />
                     </div>
-                    <label className="flex items-center gap-2 text-[11px] text-[#BFAF91]">
-                      <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="accent-[#B11226]" />
-                      Remember me (demo: session still persists locally)
-                    </label>
+                    <button type="button" onClick={() => setTab("forgot")} className="text-[11px] font-bold text-[#C9A45C] hover:underline">
+                      Forgot password?
+                    </button>
                     {err && <p className="text-[11px] font-bold text-[#E21B35]">{err}</p>}
+                    {okMsg && <p className="text-[11px] font-bold text-[#7ddf8a]">{okMsg}</p>}
                     <button
                       type="submit"
+                      disabled={busy}
                       className="w-full rounded-xl bg-[#B11226] py-3 text-sm font-black uppercase tracking-wider text-[#F2E3C6] hover:bg-[#E21B35]"
                     >
                       Login
@@ -341,10 +257,10 @@ export function AuthModal({
                     <AuthDivider label="Or continue with" />
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
                         setErr(null);
-                        setOauthFlow("google");
-                        setOauthAgeOk(false);
+                        const r = await signInWithOAuth("google");
+                        if (!r.ok) setErr(r.error);
                       }}
                       className="flex w-full items-center justify-center gap-3 rounded-xl border border-[#2A1D19] bg-[#F2E3C6] py-3 text-sm font-black text-[#050505] shadow-sm transition hover:bg-white"
                     >
@@ -353,10 +269,10 @@ export function AuthModal({
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
                         setErr(null);
-                        setOauthFlow("apple");
-                        setOauthAgeOk(false);
+                        const r = await signInWithOAuth("apple");
+                        if (!r.ok) setErr(r.error);
                       }}
                       className="flex w-full items-center justify-center gap-3 rounded-xl border border-[#BFAF91]/35 bg-[#050505] py-3 text-sm font-black text-[#F2E3C6] transition hover:border-[#B11226]"
                     >
@@ -402,14 +318,16 @@ export function AuthModal({
                       </select>
                     </div>
                     <label className="flex items-start gap-2 text-[11px] text-[#BFAF91]">
-                      <input type="checkbox" checked={suTerms} onChange={(e) => setSuTerms(e.target.checked)} className="mt-0.5 accent-[#B11226]" />I accept the demo terms (no real-money play).
+                      <input type="checkbox" checked={suTerms} onChange={(e) => setSuTerms(e.target.checked)} className="mt-0.5 accent-[#B11226]" />I accept the Terms of Service.
                     </label>
                     <label className="flex items-start gap-2 text-[11px] text-[#BFAF91]">
                       <input type="checkbox" checked={suAge} onChange={(e) => setSuAge(e.target.checked)} className="mt-0.5 accent-[#B11226]" />I confirm I am 18 or older.
                     </label>
                     {err && <p className="text-[11px] font-bold text-[#E21B35]">{err}</p>}
+                    {okMsg && <p className="text-[11px] font-bold text-[#7ddf8a]">{okMsg}</p>}
                     <button
                       type="submit"
+                      disabled={busy}
                       className="w-full rounded-xl bg-[#B11226] py-3 text-sm font-black uppercase tracking-wider text-[#F2E3C6] hover:bg-[#E21B35]"
                     >
                       Create account
@@ -417,10 +335,10 @@ export function AuthModal({
                     <AuthDivider label="Or sign up with" />
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
                         setErr(null);
-                        setOauthFlow("google");
-                        setOauthAgeOk(false);
+                        const r = await signInWithOAuth("google");
+                        if (!r.ok) setErr(r.error);
                       }}
                       className="flex w-full items-center justify-center gap-3 rounded-xl border border-[#2A1D19] bg-[#F2E3C6] py-3 text-sm font-black text-[#050505] shadow-sm transition hover:bg-white"
                     >
@@ -429,10 +347,10 @@ export function AuthModal({
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
                         setErr(null);
-                        setOauthFlow("apple");
-                        setOauthAgeOk(false);
+                        const r = await signInWithOAuth("apple");
+                        if (!r.ok) setErr(r.error);
                       }}
                       className="flex w-full items-center justify-center gap-3 rounded-xl border border-[#BFAF91]/35 bg-[#050505] py-3 text-sm font-black text-[#F2E3C6] transition hover:border-[#B11226]"
                     >
@@ -441,64 +359,8 @@ export function AuthModal({
                     </button>
                   </form>
                 )}
-              </>
-            )}
+            </>
           </div>
-
-          <AnimatePresence>
-            {oauthFlow && step === "auth" && (
-              <motion.div
-                key="oauth-demo"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="absolute inset-0 z-[15] flex items-center justify-center rounded-2xl bg-[#050505]/92 p-5 backdrop-blur-md"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <motion.div
-                  initial={{ opacity: 0, y: 12, scale: 0.97 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 8, scale: 0.98 }}
-                  transition={{ type: "spring", damping: 24, stiffness: 320 }}
-                  className="w-full max-w-sm rounded-xl border border-[#2A1D19] bg-[#15110F] p-5 shadow-xl"
-                >
-                  <h3 className="font-display text-xl font-black uppercase italic text-[#F2E3C6]">
-                    {oauthFlow === "google" ? "Demo Google login" : "Demo Apple login"}
-                  </h3>
-                  <p className="mt-2 text-[11px] leading-relaxed text-[#BFAF91]">
-                    No real OAuth tokens are exchanged. This simulates a successful provider sign-in stored only in your browser.
-                  </p>
-                  <label className="mt-4 flex cursor-pointer items-start gap-2 text-[11px] text-[#BFAF91]">
-                    <input
-                      type="checkbox"
-                      checked={oauthAgeOk}
-                      onChange={(e) => {
-                        setOauthAgeOk(e.target.checked);
-                        setErr(null);
-                      }}
-                      className="mt-0.5 accent-[#B11226]"
-                    />
-                    I confirm I am 18+ and accept the Terms.
-                  </label>
-                  {err && <p className="mt-2 text-[11px] font-bold text-[#E21B35]">{err}</p>}
-                  <button
-                    type="button"
-                    onClick={confirmDemoOAuth}
-                    className="mt-4 w-full rounded-xl bg-[#B11226] py-3 text-xs font-black uppercase tracking-wider text-[#F2E3C6] hover:bg-[#E21B35]"
-                  >
-                    {oauthFlow === "google" ? `Continue as ${DEMO_GOOGLE_EMAIL}` : `Continue as ${DEMO_APPLE_EMAIL}`}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={closeOAuth}
-                    className="mt-2 w-full py-2 text-[10px] font-bold uppercase tracking-widest text-[#BFAF91] hover:text-[#F2E3C6]"
-                  >
-                    Back
-                  </button>
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </motion.div>
       </motion.div>
       ) : null}

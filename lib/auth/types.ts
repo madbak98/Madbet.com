@@ -1,6 +1,6 @@
 export type UserRole = "user" | "admin";
 
-/** Email/password vs demo OAuth (real apps: NextAuth/Auth.js, Clerk, Supabase Auth, Firebase Auth — never roll your own OAuth.) */
+/** Email/password and OAuth provider identity used by real auth session. */
 export type AuthProvider = "email" | "google" | "apple";
 
 /** Account verification / KYC stage for UI and demo social payloads */
@@ -59,6 +59,7 @@ export type MadbakUser = {
   id: string;
   username: string;
   email: string;
+  avatarUrl?: string | null;
   /** Demo fingerprint only — production must use server-side bcrypt/argon2 */
   passwordHashMock: string;
   dateOfBirth: string;
@@ -86,10 +87,6 @@ export const INITIAL_DEMO_BALANCE = 10_000;
 
 export const DEMO_ADMIN_EMAIL = "admin@madbak-house.demo";
 export const DEMO_ADMIN_PASSWORD = "AdminDemo2026!";
-
-/** Fixed demo identities for local OAuth simulation only (no real Google/Apple tokens). */
-export const DEMO_GOOGLE_EMAIL = "demo.google@madbak.house";
-export const DEMO_APPLE_EMAIL = "demo.apple@madbak.house";
 
 /** Verification tier for badges / gating (demo semantics). */
 export function getVerificationLevel(user: MadbakUser | null, isLoggedIn: boolean): 0 | 1 | 2 | 3 {
