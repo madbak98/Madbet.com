@@ -8,7 +8,6 @@ import { DEMO_COUNTRIES } from "@/lib/auth/validators";
 import { isValidEmail, isAtLeast18 } from "@/lib/auth/validators";
 import { evaluatePasswordStrength, passwordMeetsPolicy } from "@/lib/auth/password-mock";
 import { useAuthStore } from "@/store/useAuthStore";
-import { supabase } from "@/lib/supabaseClient";
 import { PasswordStrengthMeter } from "./PasswordStrengthMeter";
 
 export function AuthModal({
@@ -49,10 +48,6 @@ export function AuthModal({
     e.preventDefault();
     setErr(null);
     setOkMsg(null);
-    if (!supabase) {
-      alert("Auth config missing. Check Vercel environment variables.");
-      return;
-    }
     if (!isValidEmail(loginEmail)) {
       setErr("Enter a valid email.");
       return;
@@ -71,10 +66,6 @@ export function AuthModal({
     e.preventDefault();
     setErr(null);
     setOkMsg(null);
-    if (!supabase) {
-      alert("Auth config missing. Check Vercel environment variables.");
-      return;
-    }
     if (!suTerms) {
       setErr("You must accept the terms.");
       return;
@@ -268,10 +259,6 @@ export function AuthModal({
                       type="button"
                       onClick={async () => {
                         setErr(null);
-                        if (!supabase) {
-                          alert("Auth config missing. Check Vercel environment variables.");
-                          return;
-                        }
                         const r = await signInWithOAuth("google");
                         if (!r.ok) setErr(r.error);
                       }}
@@ -338,10 +325,6 @@ export function AuthModal({
                       type="button"
                       onClick={async () => {
                         setErr(null);
-                        if (!supabase) {
-                          alert("Auth config missing. Check Vercel environment variables.");
-                          return;
-                        }
                         const r = await signInWithOAuth("google");
                         if (!r.ok) setErr(r.error);
                       }}

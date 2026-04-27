@@ -77,7 +77,7 @@ function authClientMissingResult(): AuthResult {
   console.error("Supabase URL:", !!process.env.NEXT_PUBLIC_SUPABASE_URL);
   console.error("Supabase ANON:", !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
   console.error("Supabase PUBLISHABLE:", !!process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
-  return { ok: false, error: "Auth config missing. Check Vercel environment variables." };
+  return { ok: false, error: "Unable to sign in right now. Please try again shortly." };
 }
 
 type AuthState = {

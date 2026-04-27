@@ -7,13 +7,8 @@ const supabaseKey =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-if (!supabaseUrl) {
-  console.error("Missing NEXT_PUBLIC_SUPABASE_URL");
-}
-
-if (!supabaseKey) {
-  console.error("Missing Supabase public key");
-}
+console.log("SUPABASE URL EXISTS:", !!supabaseUrl);
+console.log("SUPABASE KEY EXISTS:", !!supabaseKey);
 
 export const supabase =
   supabaseUrl && supabaseKey
