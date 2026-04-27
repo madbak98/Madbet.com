@@ -73,6 +73,13 @@ type SignUpInput = {
 
 type AuthResult = { ok: true; message?: string } | { ok: false; error: string };
 
+function authClientMissingResult(): AuthResult {
+  console.error("Supabase URL:", !!process.env.NEXT_PUBLIC_SUPABASE_URL);
+  console.error("Supabase ANON:", !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  console.error("Supabase PUBLISHABLE:", !!process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
+  return { ok: false, error: "Unable to initialize authentication client." };
+}
+
 type AuthState = {
   users: MadbakUser[];
   sessionUserId: string | null;
@@ -201,7 +208,7 @@ export const useAuthStore = create<AuthState>()(
         if (!input.country.trim()) return { ok: false, error: "Country is required." };
 
         const supabase = getSupabaseBrowserClient();
-        if (!supabase) return { ok: false, error: "Auth client is unavailable." };
+        if (!supabase) return authClientMissingResult();
         const { error } = await supabase.auth.signUp({
           email: input.email.trim().toLowerCase(),
           password: input.password,
@@ -213,7 +220,7 @@ export const useAuthStore = create<AuthState>()(
 
       login: async (email, password) => {
         const supabase = getSupabaseBrowserClient();
-        if (!supabase) return { ok: false, error: "Auth client is unavailable." };
+        if (!supabase) return authClientMissingResult();
         const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
         if (error) return { ok: false, error: error.message };
         await syncSessionUser("SIGNED_IN");
@@ -222,7 +229,7 @@ export const useAuthStore = create<AuthState>()(
 
       signInWithOAuth: async (provider) => {
         const supabase = getSupabaseBrowserClient();
-        if (!supabase) return { ok: false, error: "Auth client is unavailable." };
+        if (!supabase) return authClientMissingResult();
         const redirectTo = typeof window !== "undefined" ? window.location.origin : undefined;
         const { error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo } });
         if (error) return { ok: false, error: error.message };
@@ -231,7 +238,7 @@ export const useAuthStore = create<AuthState>()(
 
       forgotPassword: async (email) => {
         const supabase = getSupabaseBrowserClient();
-        if (!supabase) return { ok: false, error: "Auth client is unavailable." };
+        if (!supabase) return authClientMissingResult();
         const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/auth/reset-password` : undefined;
         const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), { redirectTo });
         if (error) return { ok: false, error: error.message };
@@ -240,7 +247,7 @@ export const useAuthStore = create<AuthState>()(
 
       resetPassword: async (nextPassword) => {
         const supabase = getSupabaseBrowserClient();
-        if (!supabase) return { ok: false, error: "Auth client is unavailable." };
+        if (!supabase) return authClientMissingResult();
         const { error } = await supabase.auth.updateUser({ password: nextPassword });
         if (error) return { ok: false, error: error.message };
         return { ok: true };

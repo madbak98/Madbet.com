@@ -2,45 +2,45 @@
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-let browserClient: SupabaseClient | null = null;
 let hasLoggedEnv = false;
 let hasWarnedMissing = false;
 
-function readSupabaseEnv() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  if (!hasLoggedEnv) {
-    hasLoggedEnv = true;
-    console.log("NEXT_PUBLIC_SUPABASE_URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
-    console.log("NEXT_PUBLIC_SUPABASE_ANON_KEY:", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-    console.log("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:", process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
-    console.log("Supabase URL exists:", !!supabaseUrl);
-    console.log("Supabase key exists:", !!supabaseKey);
-  }
-  return { supabaseUrl, supabaseKey };
+export const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+export const supabaseKey =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+
+export const supabase: SupabaseClient | null =
+  supabaseUrl && supabaseKey
+    ? createClient(supabaseUrl, supabaseKey, {
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+      })
+    : null;
+
+function logEnvDebug() {
+  if (hasLoggedEnv) return;
+  hasLoggedEnv = true;
+  console.log("Supabase URL:", !!process.env.NEXT_PUBLIC_SUPABASE_URL);
+  console.log("Supabase ANON:", !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  console.log("Supabase PUBLISHABLE:", !!process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
 }
 
 export function isSupabaseConfigured(): boolean {
-  const { supabaseUrl, supabaseKey } = readSupabaseEnv();
+  logEnvDebug();
   return Boolean(supabaseUrl && supabaseKey);
 }
 
 export function getSupabaseBrowserClient(): SupabaseClient | null {
-  if (browserClient) return browserClient;
-  const { supabaseUrl, supabaseKey } = readSupabaseEnv();
-  if (!supabaseUrl || !supabaseKey) {
+  logEnvDebug();
+  if (!supabase) {
     if (!hasWarnedMissing) {
       hasWarnedMissing = true;
       console.warn(
         "Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and either NEXT_PUBLIC_SUPABASE_ANON_KEY or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY to enable auth.",
       );
     }
-    return null;
+    console.error("Supabase URL exists:", !!supabaseUrl);
+    console.error("Supabase key exists:", !!supabaseKey);
   }
-  browserClient = createClient(supabaseUrl, supabaseKey, {
-    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
-  });
-  return browserClient;
+  return supabase;
 }
